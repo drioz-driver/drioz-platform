@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 type Point={lat:number;lng:number};
 let loading:Promise<any>|undefined;
+const addressControls=new WeakMap<HTMLInputElement,any>();
 export function maps(){
  if(!loading)loading=fetch('/api/maps/config',{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Address search is unavailable');return await r.json() as {key:string}}).then(({key})=>new Promise<any>((resolve,reject)=>{
   const existing=(window as any).google?.maps;if(existing?.places){resolve(existing);return}
@@ -16,7 +17,7 @@ export default function MapsAddresses({city,roundTrip,onLocationChange}:{city:st
  useEffect(()=>{let active=true;let listeners:any[]=[];P({});setRegion(null);R('');changed.current?.();if(pickup.current)pickup.current.value='';if(drop.current)drop.current.value='';
   maps().then(g=>{if(!active)return;E(true);M('Choose a suggested address to confirm its location.');
    for(const [name,ref] of [['pickup',pickup],['destination',drop]] as const){if(!ref.current)continue;
-    const autocomplete=new g.places.Autocomplete(ref.current,{fields:['formatted_address','geometry','name','address_components']});
+    let autocomplete=addressControls.get(ref.current);if(!autocomplete){autocomplete=new g.places.Autocomplete(ref.current,{fields:['formatted_address','geometry','name','address_components']});addressControls.set(ref.current,autocomplete)}
     listeners.push(autocomplete.addListener('place_changed',()=>{const p=autocomplete.getPlace();if(name==='pickup'){const parts=p.address_components||[];const find=(type:string)=>parts.find((part:any)=>part.types.includes(type));setRegion({city:(find('locality')||find('postal_town')||find('administrative_area_level_2'))?.long_name||'',country:find('country')?.short_name||''})}if(!p.geometry?.location){P(old=>({...old,[name]:undefined}));return}ref.current!.value=(p.formatted_address||p.name||'').slice(0,200);P(old=>({...old,[name]:{lat:p.geometry.location.lat(),lng:p.geometry.location.lng()}}));changed.current?.();}));
    }
   }).catch(()=>{if(active){E(false);M('Address search is temporarily unavailable. Enter addresses for Operations to verify.')}});

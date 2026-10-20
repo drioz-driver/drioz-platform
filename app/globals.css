@@ -22,7 +22,7 @@ button>.drioz-steering-spinner{width:20px;height:20px;margin-right:8px}
 @media(prefers-reduced-motion:reduce){.drioz-steering-spinner{animation:none}}
 
 /* Mobile reference: compact photo masthead, paper form, two booking steps. */
-.booking-step-heading,.booking-mobile-continue,.auth-mobile-title{display:none}
+.booking-step-heading,.booking-mobile-continue,.auth-mobile-title,.mobile-partner-link{display:none}
 @media(max-width:800px){
  .guest-booking{background:var(--paper)}
  .guest-booking .site-header{position:absolute;top:0;left:0;right:0;z-index:5;min-height:0;padding:22px 24px;flex-wrap:nowrap;gap:16px}
@@ -88,3 +88,5 @@ button>.drioz-steering-spinner{width:20px;height:20px;margin-right:8px}
  .auth-field{margin-bottom:16px}.auth-forgot{font-size:12px;margin:0 0 16px}
  .auth-switch{margin:22px 0;font-size:12px}.auth-bottom{font-size:10px;padding-top:0}
 }
+
+@media(max-width:800px){.guest-booking .mobile-partner-link{display:block;flex-basis:100%;font-size:12px;padding:10px 0}.guest-booking .site-header nav>a:last-child{min-height:44px}}

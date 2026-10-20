@@ -20,3 +20,60 @@
 button>.drioz-steering-spinner{width:20px;height:20px;margin-right:8px}
 @keyframes drioz-steer{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.drioz-steering-spinner{animation:none}}
+
+/* Mobile reference: compact photo masthead, paper form, two booking steps. */
+.booking-step-heading,.booking-mobile-continue,.auth-mobile-title{display:none}
+@media(max-width:800px){
+ .guest-booking{background:var(--paper)}
+ .guest-booking .site-header{position:absolute;top:0;left:0;right:0;z-index:5;min-height:0;padding:22px 24px;flex-wrap:nowrap;gap:16px}
+ .guest-booking .site-header .brand-logo{width:140px}
+ .guest-booking .site-header nav{order:initial;flex-basis:auto;overflow:visible;margin-left:auto}
+ .guest-booking .site-header nav>a:first-child{display:none}
+ .guest-booking .site-header nav>a:last-child{background:#f5f3eceb;color:#253e30;min-height:40px;padding:10px 16px;border-radius:24px;font-size:12px;text-decoration:none}
+ .guest-booking .hero{padding:0;display:block;background:none;border-radius:0;margin:0;overflow:visible}
+ .guest-booking .hero-copy{height:280px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;padding:98px 24px 25px;background:linear-gradient(180deg,#12251a38 15%,#12251a12 38%,#12251ade 100%),url('/hero.jpg') center 54%/cover;position:relative}
+ .guest-booking .hero-copy .eyebrow,.guest-booking .hero-cities{display:none}
+ .guest-booking .hero-copy h1{font-family:Arial,sans-serif;font-size:clamp(29px,7.3vw,36px);font-weight:500;line-height:1.12;letter-spacing:-1.25px;margin:0 0 12px;color:#fff}
+ .guest-booking .hero-copy h1 br:nth-of-type(1){display:none}
+ .guest-booking .hero-copy h1 em{font-family:inherit;font-style:normal;font-weight:inherit;color:#fff}
+ .guest-booking .hero-copy>p{font-size:13px;line-height:1.5;margin:0;color:#f5f3ec}
+ .guest-booking .hero-copy>p br,.guest-booking .hero-copy>p br+*{display:none}
+ .guest-booking .booking-panel{margin:0;padding:24px 24px 12px;border:0;border-radius:0;background:var(--paper);box-shadow:none}
+ .guest-booking .booking-panel>.eyebrow{display:none}
+ .guest-booking .booking-panel>h2{font-size:25px;line-height:1.15;margin:0 0 16px;letter-spacing:-.8px}
+ .mobile-booking .booking-step-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+ .booking-step-title{font-size:11px;letter-spacing:.25px;color:#5e6b5c;margin:0;scroll-margin-top:20px}
+ .booking-back{background:none;padding:4px 0;min-height:32px;font-size:12px;text-decoration:underline}
+ .mobile-booking .booking-trip-tabs{margin:0 0 18px}
+ .mobile-booking .booking-trip-tabs button{min-height:46px;font-size:12px;color:#5e6b5c}
+ .mobile-booking .field{margin-bottom:15px}
+ .mobile-booking .field>span{font-size:11px;color:#253e30;margin-bottom:7px}
+ .mobile-booking input,.mobile-booking select{min-height:50px;font-size:16px;border-radius:12px;background:#fbfcf7;padding:12px 14px;color:#253e30}
+ .mobile-booking .fields{gap:12px}
+ .booking-step-1 .booking-car-options,.booking-step-1 .booking-estimate-stage,.booking-step-1 .booking-route{display:none}
+ .booking-step-2 .booking-journey,.booking-step-2 .booking-mobile-continue{display:none}
+ .booking-step-1 .booking-mobile-continue{display:block;position:sticky;bottom:0;z-index:4;background:var(--paper);padding:12px 0 max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+ .booking-mobile-continue button{display:flex;align-items:center;justify-content:space-between;width:100%;background:#253e30;color:#fff;border-radius:14px;min-height:52px;font-size:15px}
+ .booking-mobile-continue p{font-size:10px;text-align:center;color:#5e6b5c;margin:9px 0 0}
+ .booking-step-2 .quote{margin-top:14px;padding-top:14px}
+ .booking-step-2 .quote>button.primary{position:sticky;bottom:12px;z-index:3;min-height:52px;background:#253e30;color:#fff;border-radius:14px;font-size:15px}
+ .guest-booking .customer-journeys{padding:22px 24px 26px;border-top:1px solid var(--line);margin-top:16px}
+ .guest-booking .customer-journeys h2{font-size:20px;letter-spacing:-.5px;margin:10px 0}
+ .guest-booking .customer-journeys p{font-size:12px;line-height:1.65;color:#5e6b5c;margin:8px 0}
+ .guest-booking footer{padding:20px 24px;font-size:10px}
+}
+@media(max-width:700px){
+ .auth-shell{background:#f5f3ec}.auth-story{height:260px;padding:30px 24px 25px;display:flex;justify-content:space-between;background:linear-gradient(180deg,#12251a22,#12251ade),url('/hero.jpg') center 54%/cover}
+ .auth-story:before,.auth-story-footer,.auth-desktop-title{display:none}
+ .auth-story .brand-logo{width:145px}.auth-story>div{margin:0}.auth-mobile-title{display:block}
+ .auth-story h1{font-family:Arial,sans-serif;font-weight:500;font-size:clamp(28px,7.2vw,35px);line-height:1.12;letter-spacing:-1.2px;color:#fff;margin:0 0 12px}
+ .auth-story p{display:block;color:#f5f3ec;font-size:12px;line-height:1.5;margin:0}
+ .auth-content{padding:24px;background:#f5f3ec}.auth-top{margin:0 auto}.auth-box{margin:22px auto 28px}
+ .auth-box>h2{font-size:29px;margin:12px 0}.auth-field>span{font-size:12px;color:#253e30}
+ .auth-field input,.auth-field select{min-height:52px;font-size:16px;border-radius:12px}
+ .auth-submit{min-height:52px;border-radius:14px;background:#253e30;color:#fff;font-size:15px}
+ .auth-google{border-radius:12px}.auth-content .auth-subtitle{font-size:13px;color:#5e6b5c}
+}
+@media(max-width:360px){.guest-booking .hero-copy{height:250px}.guest-booking .site-header{padding:20px}.guest-booking .booking-panel{padding:22px 20px 12px}}
+
+@media(max-width:800px){.guest-booking .hero-secondary-copy{display:none}}

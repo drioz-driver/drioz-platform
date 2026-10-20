@@ -1,0 +1,5 @@
+# Mobile website layout
+
+Approved source: the user's first screenshot (compact photographic brand hero above a paper form). The second screenshot is the failure reference: tall wrapped headline and separate header push booking out of reach. The existing desktop design remains the reference above 800px.
+
+Decisions: 280px photo masthead (250px on very small phones), original logo over the photo with a small sign-in link, regular sans-serif two-line heading, cream form, 16px inputs and 50px touch controls. No extra login barrier. Booking uses Journey details then Car & estimate at <=800px; desktop retains the complete form. Keep fields mounted when moving between steps so address selections, package and schedule survive. First-step Continue checks required journey fields before advancing. Second-step request retains all server validation, fare freshness and login handling. Respect reduced motion when scrolling to the second step. Mobile sign-in gets a 260px photographic hero and the same cream/forest form styling.

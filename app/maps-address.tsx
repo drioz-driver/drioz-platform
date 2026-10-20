@@ -33,6 +33,6 @@ export default function MapsAddresses({city,roundTrip,onLocationChange,initial}:
  {!roundTrip&&<label className="field"><span>Drop location</span><input ref={drop} name="destination" placeholder="Enter destination address" minLength={3} maxLength={200} required autoComplete="off" onKeyDown={e=>{if(e.key==='Enter')e.preventDefault()}} onChange={()=>{changed.current?.();P(p=>({...p,destination:undefined}));R('')}}/></label>}
  <input type="hidden" name="pickupRegion" value={region?JSON.stringify(region):''}/><input type="hidden" name="pickupPoint" value={points.pickup?JSON.stringify(points.pickup):''}/><input type="hidden" name="destinationPoint" value={valid?JSON.stringify(roundTrip?points.pickup:points.destination):''}/>
  <p className="helper" role="status">{message}{enabled&&valid?' Locations selected.':''}</p>
- {!roundTrip&&points.pickup&&points.destination&&<section aria-label="Driving route preview"><div ref={mapElement} style={{height:220,borderRadius:12,overflow:'hidden'}}/><p role="status">{route||'Finding driving route…'}</p><p className="helper">Travel time is an estimate. Driver fares follow the selected service package.</p></section>}
+ {!roundTrip&&points.pickup&&points.destination&&<section className="booking-route" aria-label="Driving route preview"><div ref={mapElement} style={{height:220,borderRadius:12,overflow:'hidden'}}/><p role="status">{route||'Finding driving route…'}</p><p className="helper">Travel time is an estimate. Driver fares follow the selected service package.</p></section>}
  </>;
 }

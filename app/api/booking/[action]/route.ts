@@ -14,6 +14,6 @@ export async function POST(request:Request,{params}:{params:Promise<{action:stri
  const ip=request.headers.get('x-vercel-forwarded-for')||request.headers.get('x-forwarded-for')||'unknown';
  const hash=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ip.split(',')[0].trim()))).toString('hex');
  const guest={id:'estimate:'+hash,email:'',name:'Guest',role:'customer',disabled:0};
- const ops=operations(env.DB,null,'');await ops.limit(guest);return Response.json(await ops.handle(guest,action,'POST',body),{headers:{'Cache-Control':'no-store'}});
+ const ops=operations(env.DB,null,'');await ops.limit(guest);const result=await ops.handle(guest,action,'POST',body);if(action==='estimate')delete result.partner;return Response.json(result,{headers:{'Cache-Control':'no-store'}});
  }catch(e){return Response.json({message:e instanceof ApiError?e.message:'Unable to calculate this trip. Please retry.'},{status:e instanceof ApiError?e.status:503})}
 }

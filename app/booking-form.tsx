@@ -10,7 +10,7 @@ export default function BookingForm({cities,onBook,guest=false}:{guest?:boolean;
  const [coverage,setCoverage]=useState<any>(null),[coverageBusy,setCoverageBusy]=useState(false);
  const [city,setCity]=useState('worldwide'),[type,setType]=useState('one-way'),[revision,setRevision]=useState(0),[estimate,setEstimate]=useState<any>(null),[state,setState]=useState<'empty'|'loading'|'ready'|'error'>('empty'),[message,setMessage]=useState(''),[booking,setBooking]=useState(false),[expired,setExpired]=useState(false);
  const [restored,setRestored]=useState<Record<string,string>|null>(null);
- useEffect(()=>{try{const draft=readBookingDraft(sessionStorage.getItem(bookingDraftKey));if(draft){setRestored(draft);setCity(draft.cityId||'worldwide');setType(draft.tripType);setRevision(n=>n+1)}}catch{}},[]);
+ useEffect(()=>{try{const draft=readBookingDraft(sessionStorage.getItem(bookingDraftKey));if(!draft)sessionStorage.removeItem(bookingDraftKey);if(draft){setRestored(draft);setCity(draft.cityId||'worldwide');setType(draft.tripType);setRevision(n=>n+1)}}catch{}},[]);
  const endpoint=guest?'/api/booking/':'/api/ops/';
  const resolvedCity=coverage?.cityId||city;
  const hasPricing=resolvedCity!=='worldwide'&&!resolvedCity.startsWith('region-')&&Number(cities.find(c=>c.id===resolvedCity)?.base)>0;

@@ -16,7 +16,7 @@ async function route(request:Request,context:{params:Promise<{action:string}>}){
    if(action==='preview'){if(!runtime.ALLOW_PLATFORM_IDENTITY||!request.headers.get('oai-authenticated-user-id'))return auth.apply(Response.redirect(new URL('/signin-with-chatgpt?return_to=%2F',request.url),303));auth.choose('platform');return auth.apply(Response.redirect(new URL(safeReturnTo(new URL(request.url).searchParams.get('next')),request.url),303))}
    if(action==='google'){
     if(!auth.client)return json({message:'Google sign-in needs authentication service configuration.'},503);
-    await throttle(runtime.DB,request,'google');auth.choose('external');const next=safeReturnTo(new URL(request.url).searchParams.get('next'));const {data,error}=await auth.client.auth.signInWithOAuth({provider:'google',options:{redirectTo:new URL('/auth/callback?next='+encodeURIComponent(next),request.url).toString(),skipBrowserRedirect:true}});if(error||!data.url)return json({message:'Google sign-in is not available yet.'},503);return auth.apply(Response.redirect(data.url,303));
+    await throttle(runtime.DB,request,'google');auth.choose('external');const next=safeReturnTo(new URL(request.url).searchParams.get('next'));const {data,error}=await auth.client.auth.signInWithOAuth({provider:'google',options:{redirectTo:new URL(next==='/'?'/auth/callback':'/auth/callback?next='+encodeURIComponent(next),request.url).toString(),skipBrowserRedirect:true}});if(error||!data.url)return json({message:'Google sign-in is not available yet.'},503);return auth.apply(Response.redirect(data.url,303));
    }
    return json({message:'Not found'},404);
   }

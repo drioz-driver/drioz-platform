@@ -1,0 +1,38 @@
+{
+  "name": "drioz-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "export": "expo export --platform all",
+    "build:android": "eas build --platform android --profile preview",
+    "build:ios": "eas build --platform ios --profile preview"
+  },
+  "dependencies": {
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-maps": "1.27.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "expo-location": "~57.0.21",
+    "expo-task-manager": "~57.0.21",
+    "expo-secure-store": "~57.0.4",
+    "expo-web-browser": "~57.0.3",
+    "expo-linking": "~57.0.13",
+    "expo-document-picker": "~57.0.3",
+    "expo-crypto": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "expo-dev-client": "~57.0.20",
+    "expo-apple-authentication": "~57.0.2",
+    "expo": "~57.0.30",
+    "@supabase/supabase-js": "2.117.3",
+    "react-native-url-polyfill": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.2",
+    "@types/react": "~19.2.0"
+  }
+}

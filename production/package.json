@@ -1,0 +1,1 @@
+{"name":"drioz","private":true,"workspaces":["apps/*"],"scripts":{"build":"npm run build --workspaces --if-present","check":"npm run check --workspaces --if-present","dev:api":"npm run dev -w @drioz/api","dev:web":"npm run dev -w @drioz/web"}}

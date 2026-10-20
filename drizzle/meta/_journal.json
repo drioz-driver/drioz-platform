@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1792407409505,
+      "tag": "0000_married_proudstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792412115927,
+      "tag": "0001_woozy_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792415159281,
+      "tag": "0002_normal_northstar",
+      "breakpoints": true
+    }
+  ]
+}

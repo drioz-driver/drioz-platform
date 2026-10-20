@@ -1,0 +1,4 @@
+export const recoveryCookie='__Host-drioz-recovery';
+async function hash(s:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('')}
+export async function createRecovery(db:any,userId:string){const token=crypto.randomUUID()+crypto.randomUUID();await db.prepare('INSERT INTO auth_recovery(hash,user_id,expires_at) VALUES(?,?,?)').bind(await hash(token),userId,Date.now()+600000).run();await db.prepare('DELETE FROM auth_recovery WHERE expires_at<?').bind(Date.now()).run();return token}
+export async function consumeRecovery(db:any,userId:string,token:string){if(!token)return false;const r=await db.prepare('DELETE FROM auth_recovery WHERE hash=? AND user_id=? AND expires_at>? RETURNING hash').bind(await hash(token),userId,Date.now()).first();return !!r}

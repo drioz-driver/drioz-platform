@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { databaseAdapter, parameterize } from '../lib/postgres.ts';
+import { postgresOptions } from '../lib/postgres-options.mjs';
 import { operations } from '../lib/operations.ts';
 
 test('PostgreSQL adapter preserves booking contracts and atomic batch rollback', async () => {
@@ -38,3 +39,5 @@ test('PostgreSQL adapter preserves booking contracts and atomic batch rollback',
     assert.equal(parameterize("SELECT '?' AS literal, ? AS value"),"SELECT '?' AS literal, $1 AS value");
   } finally { await pg.close(); }
 });
+
+test('database TLS keeps certificate verification and includes the official Supabase CA',()=>{const options=postgresOptions('postgresql://example:example@pooler.supabase.com/postgres?sslmode=no-verify');assert.equal(options.ssl.rejectUnauthorized,true);assert.equal(new URL(options.connectionString).searchParams.has('sslmode'),false);assert.ok(options.ssl.ca.some(c=>c.includes('BEGIN CERTIFICATE')))});

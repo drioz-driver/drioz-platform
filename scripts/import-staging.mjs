@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
+import { postgresOptions } from '../lib/postgres-options.mjs';
 
 // Creates a NEW private schema only. An existing schema causes a rollback.
 if (!process.env.DATABASE_URL || !process.argv[2]) {
@@ -7,7 +8,7 @@ if (!process.env.DATABASE_URL || !process.argv[2]) {
 }
 const source = JSON.parse(await readFile(process.argv[2], 'utf8'));
 const schema = await readFile(new URL('../db/postgres-staging.sql', import.meta.url), 'utf8');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool(postgresOptions(process.env.DATABASE_URL));
 const client = await pool.connect();
 try {
   await client.query('BEGIN');

@@ -1,4 +1,5 @@
 import { Pool, types } from 'pg';
+import { postgresOptions } from './postgres-options.mjs';
 
 // Domain timestamps are epoch milliseconds, safely inside JavaScript's integer range.
 types.setTypeParser(20, value => {
@@ -43,7 +44,7 @@ let pool: Pool | undefined;
 export function postgresDatabase() {
   if (!process.env.DATABASE_URL) return undefined;
   if (!pool) pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    ...postgresOptions(process.env.DATABASE_URL),
     max: 3, idleTimeoutMillis: 10000, connectionTimeoutMillis: 10000,
   });
   const active = pool;

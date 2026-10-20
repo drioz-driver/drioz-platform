@@ -77,3 +77,14 @@ button>.drioz-steering-spinner{width:20px;height:20px;margin-right:8px}
 @media(max-width:360px){.guest-booking .hero-copy{height:250px}.guest-booking .site-header{padding:20px}.guest-booking .booking-panel{padding:22px 20px 12px}}
 
 @media(max-width:800px){.guest-booking .hero-secondary-copy{display:none}}
+
+@media(max-width:700px){
+ .auth-intent,.auth-box>.eyebrow,.auth-staff-note{display:none}
+ .auth-box{margin:18px auto 24px}.auth-top{font-size:11px}
+ .auth-box>h2{margin:0 0 10px}.auth-subtitle{margin:0 0 18px}
+ .auth-google{min-height:44px;padding:11px 12px}
+ .auth-divider{margin:14px 0;font-size:10px}.auth-method{margin-bottom:18px}
+ .auth-method button{min-height:40px;padding:10px 5px;font-size:12px}
+ .auth-field{margin-bottom:16px}.auth-forgot{font-size:12px;margin:0 0 16px}
+ .auth-switch{margin:22px 0;font-size:12px}.auth-bottom{font-size:10px;padding-top:0}
+}

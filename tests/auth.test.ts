@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {safeReturnTo,managedIdentity} from '../lib/auth/identity.ts';
-import {authContext} from '../lib/auth/server.ts';
+import {authContext,AuthUnavailableError} from '../lib/auth/server.ts';
 import {createRecovery,consumeRecovery} from '../lib/auth/recovery.ts';
 import {throttle} from '../lib/auth/rate-limit.ts';
 const config={SUPABASE_URL:'https://example.supabase.co',SUPABASE_PUBLISHABLE_KEY:'test-public-key'};
@@ -20,3 +20,10 @@ test('expired recovery grants cannot change a password',async()=>{const storage=
 test('phone sending and OTP verification are throttled without storing raw phone numbers',async()=>{const storage=db(),request=new Request('https://drioz.example',{headers:{'cf-connecting-ip':'192.0.2.1'}});for(let i=0;i<3;i++)await throttle(storage,request,'phone-send','+919876543210');await assert.rejects(throttle(storage,request,'phone-send','+919876543210'));const keys=storage.sql.prepare('SELECT key FROM rate_limits').all();assert.ok(keys.every((r:any)=>!r.key.includes('9876543210')))});
 
  test('untrusted platform headers cannot authenticate on Vercel',async()=>{const auth=authContext(new Request('https://drioz.example',{headers:{'oai-authenticated-user-id':'owner','oai-authenticated-user-email':'owner@example.com',cookie:'__Host-drioz-mode=platform'}}),{});assert.equal(await auth.identity(),null)});
+
+test('temporary authentication outages do not masquerade as signed-out sessions',async()=>{
+ const fake=()=>({auth:{getUser:async()=>({data:{user:null},error:{name:'AuthRetryableFetchError',status:503}})}});
+ const auth=authContext(new Request('https://drioz.example'),config,fake);
+ await assert.rejects(auth.identity(),AuthUnavailableError);
+ assert.equal(auth.apply(Response.json({})).headers.get('set-cookie'),null);
+});

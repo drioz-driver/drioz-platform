@@ -63,5 +63,7 @@ export function postgresDatabase() {
   }
   // SET LOCAL also works through transaction poolers; no connection session state leaks.
   const query: Query = (sql, args) => transaction(run => run(sql, args));
-  return databaseAdapter(query, transaction);
+  return {...databaseAdapter(query, transaction),
+    readSnapshot: <T>(work: (db: ReturnType<typeof databaseAdapter>) => Promise<T>) => transaction(run => work(databaseAdapter(run, nested => nested(run)))),
+  };
 }

@@ -1,11 +1,13 @@
-import React from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {
   View,
   Text,
   TextInput,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
+  Animated,
+  AccessibilityInfo,
+  Easing,
   ScrollView,
   Image,
 } from "react-native";
@@ -117,14 +119,28 @@ export function Choices({
     </ScrollView>
   );
 }
+export function SteeringLoader({size = 48}: {size?: number}) {
+  const rotation = useRef(new Animated.Value(0)).current;
+  const [reduced, setReduced] = useState(true);
+  useEffect(() => {
+    let active = true;
+    AccessibilityInfo.isReduceMotionEnabled().then(value => {if(active)setReduced(value)}).catch(()=>{});
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    return () => {active=false;subscription.remove()};
+  }, []);
+  useEffect(() => {
+    rotation.setValue(0);
+    if(reduced)return;
+    const loop = Animated.loop(Animated.timing(rotation, {toValue:1,duration:1800,easing:Easing.linear,useNativeDriver:true,isInteraction:false}));
+    loop.start();
+    return () => {loop.stop();rotation.stopAnimation()};
+  }, [reduced, rotation]);
+  return <Animated.Image source={require('../assets/drioz-steering.png')}
+    accessibilityLabel="Loading" accessibilityRole="progressbar"
+    style={{width:size,height:size,transform:[{rotate:rotation.interpolate({inputRange:[0,1],outputRange:['0deg','360deg']})}]}}/>;
+}
 export function Loading() {
-  return (
-    <ActivityIndicator
-      size="large"
-      color={colors.ink}
-      style={{ padding: 30 }}
-    />
-  );
+  return <View style={{padding:30,alignItems:'center',justifyContent:'center'}}><SteeringLoader/></View>;
 }
 export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },

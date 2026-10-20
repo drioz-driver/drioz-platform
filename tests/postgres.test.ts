@@ -10,7 +10,9 @@ test('PostgreSQL adapter preserves booking contracts and atomic batch rollback',
   const pg = new PGlite();
   try {
     await pg.exec('BEGIN;' + readFileSync(new URL('../db/postgres-staging.sql', import.meta.url), 'utf8') + ';COMMIT;SET search_path=drioz_staging;');
+    const queries:string[]=[];
     const query = async (sql:string, args:any[]) => {
+      queries.push(sql);
       const result = await pg.query(sql,args);
       return { rows:result.rows, rowCount:result.affectedRows ?? result.rows.length };
     };
@@ -30,7 +32,10 @@ test('PostgreSQL adapter preserves booking contracts and atomic batch rollback',
     const booking = await ops.handle(customer,'bookings','POST',{quoteId:quote.id,key});
     assert.equal(booking.customer_id,customer.id);
     assert.equal((await ops.handle(customer,'bookings','POST',{quoteId:quote.id,key})).id,booking.id);
+    queries.length=0;
+    assert.equal((await ops.actor({id:'customer',email:'customer@example.com',name:'Customer'})).id,customer.id);
     assert.equal((await ops.handle(customer,'snapshot','GET',null)).bookings.length,1);
+    assert.ok(queries.every(sql=>sql.startsWith('SELECT')), 'polling must not seed cities or rewrite profiles');
     await assert.rejects(db.batch([
       db.prepare("INSERT INTO users(id,email,name,created_at) VALUES('rollback','rollback@example.com','Rollback',1)"),
       db.prepare("INSERT INTO users(id,email,name,created_at) VALUES('owner','duplicate@example.com','Duplicate',1)"),

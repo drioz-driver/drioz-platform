@@ -13,3 +13,10 @@
 .booking-fields-group{border:0;margin:0;padding:0;min-width:0}.estimate-status{font-size:.83rem;line-height:1.6;color:#627269;margin:16px 0}.booking-panel .quote .primary{width:100%;margin-top:12px}.booking-panel .quote p{font-size:.78rem;line-height:1.65}.booking-panel .quote .helper{color:#7a5627;background:#fbf4e7;border-radius:8px;padding:10px}.booking-fields-group:disabled{opacity:.65}
 
 .driver-review-summary{margin-bottom:24px;border-color:#bdd4c7}.driver-review-summary .section-heading{gap:20px;flex-wrap:wrap}.driver-review-summary .ledger-row small{display:block}.review-count{margin-left:8px;border-radius:20px;background:#dcebdd;padding:2px 7px;color:#164c36;font-size:.75rem}.application-confirmation{margin:14px 0;padding:14px;background:#eff6f0;border-radius:10px}.application-confirmation p{overflow-wrap:anywhere;font-size:.85rem}
+
+/* Brand loader: rotate the wheel, not its surrounding layout. */
+.drioz-steering-spinner{display:inline-block;flex-shrink:0;vertical-align:middle;transform-origin:center;animation:drioz-steer 1.8s linear infinite}
+.loading>.drioz-steering-spinner{width:64px;height:64px}
+button>.drioz-steering-spinner{width:20px;height:20px;margin-right:8px}
+@keyframes drioz-steer{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.drioz-steering-spinner{animation:none}}

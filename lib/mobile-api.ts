@@ -96,6 +96,7 @@ export async function handleMobile(
     if (!mobilePathAllowed(path, request.method))
       throw new ApiError(404, "Endpoint not found");
     const identity = await mobileIdentity(request, runtime, fetcher);
+    if (!runtime.DB) throw new ApiError(503, 'Database unavailable');
     const ops = operations(
       runtime.DB,
       runtime.BUCKET,

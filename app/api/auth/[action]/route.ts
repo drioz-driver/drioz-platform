@@ -1,4 +1,4 @@
-import {env} from 'cloudflare:workers';
+import { runtime as getRuntime } from '@/lib/runtime';
 import {z} from 'zod';
 import {authContext,providerStatus,type AuthRuntime} from '@/lib/auth/server';
 import {safeReturnTo} from '@/lib/auth/identity';
@@ -7,12 +7,13 @@ import {throttle} from '@/lib/auth/rate-limit';
 export const dynamic='force-dynamic';
 const email=z.string().trim().email().max(254).transform(v=>v.toLowerCase()),password=z.string().min(12).max(128),phone=z.string().regex(/^\+[1-9]\d{7,14}$/,'Use a country code and valid mobile number');
 async function route(request:Request,context:{params:Promise<{action:string}>}){
+ const env=getRuntime();
  const runtime=env as unknown as AuthRuntime&{DB:D1Database};const auth=authContext(request,runtime),action=(await context.params).action;const json=(body:unknown,status=200)=>auth.apply(Response.json(body,{status}));
  try{
   if(request.method==='GET'){
-   if(action==='config')return json(await providerStatus(runtime));
+   if(action==='config')return json({...await providerStatus(runtime),platformPreview:!!runtime.ALLOW_PLATFORM_IDENTITY});
    if(action==='session'){const user=await auth.identity();return json({authenticated:!!user,provider:user?.provider||null})}
-   if(action==='preview'){if(!request.headers.get('oai-authenticated-user-id'))return auth.apply(Response.redirect(new URL('/signin-with-chatgpt?return_to=%2F',request.url),303));auth.choose('platform');return auth.apply(Response.redirect(new URL(safeReturnTo(new URL(request.url).searchParams.get('next')),request.url),303))}
+   if(action==='preview'){if(!runtime.ALLOW_PLATFORM_IDENTITY||!request.headers.get('oai-authenticated-user-id'))return auth.apply(Response.redirect(new URL('/signin-with-chatgpt?return_to=%2F',request.url),303));auth.choose('platform');return auth.apply(Response.redirect(new URL(safeReturnTo(new URL(request.url).searchParams.get('next')),request.url),303))}
    if(action==='google'){
     if(!auth.client)return json({message:'Google sign-in needs authentication service configuration.'},503);
     await throttle(runtime.DB,request,'google');auth.choose('external');const next=safeReturnTo(new URL(request.url).searchParams.get('next'));const {data,error}=await auth.client.auth.signInWithOAuth({provider:'google',options:{redirectTo:new URL('/auth/callback?next='+encodeURIComponent(next),request.url).toString(),skipBrowserRedirect:true}});if(error||!data.url)return json({message:'Google sign-in is not available yet.'},503);return auth.apply(Response.redirect(data.url,303));

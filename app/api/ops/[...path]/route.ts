@@ -1,8 +1,9 @@
-import {env} from 'cloudflare:workers';
+import { runtime as getRuntime } from '@/lib/runtime';
 import {authContext,type AuthRuntime} from '@/lib/auth/server';
 import {operations,ApiError} from '@/lib/operations';
 export const dynamic='force-dynamic';
 async function route(request:Request,context:{params:Promise<{path:string[]}>}){
+ const env=getRuntime();
  const auth=authContext(request,env as unknown as AuthRuntime);
  const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
  try{

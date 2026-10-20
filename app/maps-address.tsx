@@ -10,11 +10,12 @@ export function maps(){
   script.onload=()=>resolve((window as any).google.maps);script.onerror=()=>reject(Error('Unable to load address search'));document.head.appendChild(script);
  } )).catch(e=>{loading=undefined;throw e});return loading;
 }
-export default function MapsAddresses({city,roundTrip,onLocationChange}:{city:string;roundTrip:boolean;onLocationChange?:()=>void}){
+export default function MapsAddresses({city,roundTrip,onLocationChange,initial}:{initial?:Record<string,string>;city:string;roundTrip:boolean;onLocationChange?:()=>void}){
+ const initialFields=useRef(initial);
  const changed=useRef(onLocationChange);changed.current=onLocationChange;
  const pickup=useRef<HTMLInputElement>(null),drop=useRef<HTMLInputElement>(null),mapElement=useRef<HTMLDivElement>(null),version=useRef(0);
  const [points,P]=useState<{pickup?:Point;destination?:Point}>({}),[message,M]=useState(''),[enabled,E]=useState(false),[route,R]=useState(''),[region,setRegion]=useState<{city:string;country:string}|null>(null);
- useEffect(()=>{let active=true;let listeners:any[]=[];P({});setRegion(null);R('');changed.current?.();if(pickup.current)pickup.current.value='';if(drop.current)drop.current.value='';
+ useEffect(()=>{let active=true;let listeners:any[]=[];const draft=initialFields.current;initialFields.current=undefined;let restoredPoints:any={};try{restoredPoints={pickup:JSON.parse(draft?.pickupPoint||'null')||undefined,destination:JSON.parse(draft?.destinationPoint||'null')||undefined};setRegion(JSON.parse(draft?.pickupRegion||'null'))}catch{setRegion(null)}P(restoredPoints);R('');changed.current?.();if(pickup.current)pickup.current.value=draft?.pickup||'';if(drop.current)drop.current.value=draft?.destination||'';
   maps().then(g=>{if(!active)return;E(true);M('Choose a suggested address to confirm its location.');
    for(const [name,ref] of [['pickup',pickup],['destination',drop]] as const){if(!ref.current)continue;
     let autocomplete=addressControls.get(ref.current);if(!autocomplete){autocomplete=new g.places.Autocomplete(ref.current,{fields:['formatted_address','geometry','name','address_components']});addressControls.set(ref.current,autocomplete)}

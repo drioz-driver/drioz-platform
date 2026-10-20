@@ -2,6 +2,7 @@
 import {sessionFetch} from '@/lib/browser-api';
 import {Spinner} from '@/components/ui/spinner';
 import Logo from './logo';
+import GuestBooking from './guest-booking';
 import DriverReviewSummary from './driver-review-summary';
 import BookingForm from './booking-form';
 import DriverLocationMap from './driver-location-map';
@@ -29,7 +30,7 @@ export default function Platform(){
  async function upload(f:FormData){await action('documents',f)}
  function shareGps(){if(!navigator.geolocation){E('Location is unavailable on this device');return}if(watch.current!==null){navigator.geolocation.clearWatch(watch.current);watch.current=null;GP(false);return}watch.current=navigator.geolocation.watchPosition(pos=>{setPosition({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,at:pos.timestamp});if(Date.now()-lastLocation.current<15000)return;lastLocation.current=Date.now();api('driver/location',{lat:pos.coords.latitude,lng:pos.coords.longitude}).catch(e=>E(e.message))},e=>{E(e.message);if(watch.current!==null)navigator.geolocation.clearWatch(watch.current);watch.current=null;GP(false)},{enableHighAccuracy:true,maximumAge:10000,timeout:20000});GP(true)}
  if(loading)return <main className="loading"><Spinner/><p role="status">Connecting your workspace…</p></main>;
- if(!data)return <main className="loading"><Logo className="loading-logo"/><h1>Your car. Your time.</h1><p>{error}</p><a className="primary" href="/login">Sign in to DRIOZ</a></main>;
+ if(!data)return <GuestBooking/>;
  const {me,cities,bookings,driver,documents,drivers,users,tickets,notifications,payouts,payments,audit,integrations}=data;const admin=['admin','operator','finance','support'].includes(me.role),dispatch=['admin','operator'].includes(me.role),finance=['admin','finance'].includes(me.role),mine=bookings.filter((b:any)=>b.customer_id===me.id),partnerTrips=bookings.filter((b:any)=>b.driver_id===me.id),completed=partnerTrips.filter((b:any)=>b.status==='completed'),earnings=completed.reduce((n:number,b:any)=>n+b.partner_fare,0),active=partnerTrips.find((b:any)=>['assigned','arrived','in_progress'].includes(b.status));
  const pendingDrivers=drivers.filter((d:any)=>d.verification==='pending'),pendingCount=data.pendingDriverReviews??pendingDrivers.length;
  const openReviews=()=>{location.hash='admin/partners';V('admin');S('partners')};

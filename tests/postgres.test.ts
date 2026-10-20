@@ -27,7 +27,12 @@ test('PostgreSQL adapter preserves booking contracts and atomic batch rollback',
     await ops.limit(customer);
     await ops.limit(customer);
     await ops.handle(owner,'cities','POST',{id:'hyderabad',enabled:true,base:24900,hourly:14900,night:5000,taxBps:500,commissionBps:2000,zones:[{lat:17.44,lng:78.39,radiusKm:50}]});
-    const quote = await ops.handle(customer,'quote','POST',{cityId:'hyderabad',pickup:'Madhapur',destination:'Airport',pickupPoint:{lat:17.44,lng:78.39},destinationPoint:{lat:17.24,lng:78.43},tripType:'one-way',transmission:'manual',scheduledAt:null});
+        const anonymous={id:'estimate:anonymous',email:'',name:'Guest',role:'customer',disabled:0};
+    await ops.limit(anonymous);
+    const guestEstimate=await ops.handle(anonymous,'estimate','POST',{cityId:'hyderabad',pickup:'Madhapur',destination:'Airport',pickupPoint:{lat:17.44,lng:78.39},destinationPoint:{lat:17.24,lng:78.43},tripType:'one-way',transmission:'manual',scheduledAt:null});
+    assert.ok(guestEstimate.total>0);
+    assert.equal(await db.prepare("SELECT * FROM users WHERE id='estimate:anonymous'").first(),null);
+const quote = await ops.handle(customer,'quote','POST',{cityId:'hyderabad',pickup:'Madhapur',destination:'Airport',pickupPoint:{lat:17.44,lng:78.39},destinationPoint:{lat:17.24,lng:78.43},tripType:'one-way',transmission:'manual',scheduledAt:null});
     const key = crypto.randomUUID();
     const booking = await ops.handle(customer,'bookings','POST',{quoteId:quote.id,key});
     assert.equal(booking.customer_id,customer.id);

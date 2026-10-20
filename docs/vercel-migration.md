@@ -24,3 +24,8 @@ Keep the private export outside the repository. Set DATABASE_URL securely and ru
 ## Before live release
 
 Recover four missing uploaded documents, confirm bucket privacy, and verify file bytes and ownership. Obtain a consistent final export and reconcile writes since the rehearsal. Test real browser and mobile login, fare estimates, booking/driver transitions, role boundaries, recovery, files and payment/payout invariants against staging. Resolve any serialization failures safely without repeating external side effects. Review production audience requirements before exposure. Do not switch DNS until the full staging flow passes. Keep the existing site authoritative until cutover.
+
+## Verification performed
+
+Next.js production build and TypeScript compilation passed. All 38 auth, booking and PostgreSQL tests passed. The private drioz_staging schema was created in the existing DRIOZ Supabase project; imported table counts match all 58 exported rows. Created private bucket drioz-documents-staging (PDF/JPEG/PNG, 5 MB bucket limit; current Vercel upload route accepts 4 MB). Original document bytes remain missing. Live DNS and original Sites hosting are unchanged. Server credentials are not yet configured on Vercel, so real hosted end-to-end login and booking verification is pending.
+

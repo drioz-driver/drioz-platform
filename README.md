@@ -1,4 +1,6 @@
-# DRIOZ private pilot
+# DRIOZ platform
+
+DRIOZ customer booking, driver partner and operations platform, including the shared Android and iOS application.
 
 The hosted site now uses a Vinext React frontend, Cloudflare Worker API, D1 records and private R2 documents, with Supabase email/password and Google authentication plus private ChatGPT preview access. The existing `production/` directory retains the separately built Next.js/NestJS/PostgreSQL architecture; it is not the runtime serving this Site. The old browser-local preview is preserved in `legacy-demo/` for reference and regression testing.
 
@@ -33,7 +35,7 @@ Sign in using the owner email; open Operations → Cities; configure a service-a
 
 - Google Maps address search, driving route preview and device GPS map are integrated through GOOGLE_MAPS_BROWSER_KEY. Live browser/provider and device GPS verification remain pending. Fares use service packages rather than road distance. A nearest-partner match uses straight-line distance. Worldwide addresses do not imply worldwide driver coverage.
 - Email/password, mobile OTP and Google sign-in integration is implemented; provider activation and real end-to-end tests are pending. See `docs/AUTH_SETUP.md`. SMS/push delivery and real payment gateway/refund/payout execution still need provider setup.
-- Native Android/iOS apps and app-store distribution remain unbuilt. The mobile web manifest is not a native app.
+- The native Android test APK has been built and run in an emulator. The shared iOS source and JavaScript bundle are verified; signed iOS builds, device testing and app-store distribution remain pending.
 - No automated request-expiry/retry worker, background dispatch queue, monitored emergency service or SOS integration.
 - Overtime beyond agreed hours needs a separate agreed quote; cancellation charges are not collected. Outstation bookings are limited to configured service zones until dedicated route rules are implemented.
 - Current operational lists return the latest 100 records; large-volume pagination, monitoring/alerting, backup/restore drills, retention/deletion flows and production load/security reviews remain launch work.
@@ -43,4 +45,8 @@ Do not represent this as ready for public transport operations, as a monitored s
 
 ## Android and iOS source
 
-The `mobile/` directory contains the Expo / React Native customer and driver app, its locked dependencies, native location/auth configuration, EAS build profiles and setup guide. It uses `/api/mobile/*` with remotely verified Supabase bearer sessions and the same booking domain. See `mobile/README.md` for current private-API access, signing, maps and device-test requirements. Native JavaScript exports are verified; no APK/IPA or store release has been generated.
+The `mobile/` directory contains the Expo / React Native customer and driver app, its locked dependencies, native location/auth configuration, EAS build profiles and setup guide. It uses `/api/mobile/*` with remotely verified Supabase bearer sessions and the same booking domain. See `mobile/README.md` for current private-API access, signing, maps and device-test requirements. Android ARM64/x86_64 test builds were verified locally. APKs, signing keys, local environment files, dependencies and generated builds are excluded from Git. iOS signing and store releases remain pending.
+
+The latest mobile UI uses the website palette and a compact sign-in screen. One-way, round-trip hourly packages and scheduled outstation options retain their distinct fields. Run `node booking-design.test.cjs` inside `mobile/` after installing dependencies to check these booking UI rules without making live requests.
+
+The current hosting-level ChatGPT sign-in wall blocks native API calls. This repository push does not migrate hosting, remove that restriction or deploy the app. Configure a mobile-accessible authenticated API before end-to-end native booking tests.

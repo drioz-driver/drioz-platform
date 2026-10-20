@@ -10,6 +10,8 @@ production/apps/api/dist/
 .vinext/
 dist/
 **/build/
+!/build/
+!/build/**
 **/dist-review/
 **/dist-ios-review/
 **/.expo/

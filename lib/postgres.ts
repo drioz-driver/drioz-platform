@@ -32,6 +32,7 @@ export function databaseAdapter(query: Query, transaction: (work: (query: Query)
   }
   return {
     prepare: statement,
+    transaction: <T>(work:(db:any)=>Promise<T>):Promise<T> => transaction(run=>work(databaseAdapter(run,nested=>nested(run)))),
     batch: (statements: ReturnType<typeof statement>[]) => transaction(async run => {
       const results = [];
       for (const statement of statements) results.push(await statement.execute(run));

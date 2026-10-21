@@ -22,7 +22,7 @@ export async function api(
   let { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) throw new APIError("Sign in to continue", 401);
   const multipart = data instanceof FormData;
-  const response = await fetch(apiOrigin + "/api/mobile/" + path, {
+  const response = await fetch(apiOrigin + (path.startsWith("billing/") ? "/api/"+path.slice(8) : "/api/mobile/"+path), {
     method: data === undefined ? "GET" : "POST",
     headers: {
       Authorization: "Bearer " + sessionData.session.access_token,

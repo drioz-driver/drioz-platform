@@ -20,6 +20,7 @@ import { api, apiOrigin, APIError } from "./src/api";
 import { stopTracking } from "./src/location";
 import AuthScreen from "./src/AuthScreen";
 import BookingScreen from "./src/BookingScreen";
+import WalletScreen from "./src/WalletScreen";
 import DriverScreen from "./src/DriverScreen";
 import SupportScreen from "./src/SupportScreen";
 import { Trip } from "./src/Trips";
@@ -137,6 +138,7 @@ function Workspace() {
       </ScrollView>
     );
   const driver = data.me.role === "driver";
+  const selectedTab=tab==="wallet"?"account":tab;
   const tabs = [
     ["home", driver ? "Driver" : "Home"],
     ["trips", "Bookings"],
@@ -185,7 +187,7 @@ function Workspace() {
               )
               .filter((b:any)=>journeyTab === "past" ? ["completed","cancelled"].includes(b.status) : !["completed","cancelled"].includes(b.status))
               .map((b: any) => (
-                <Trip key={b.id} trip={b} partner={driver} refresh={refresh} />
+                <Trip key={b.id} trip={b} partner={driver} refresh={refresh} onPay={()=>{T("wallet");scroll.current?.scrollTo({y:0,animated:false})}} />
               ))}
             {data.locationRequests
               ?.filter(
@@ -253,6 +255,7 @@ function Workspace() {
             ))}
           </>
         )}
+        {tab === "wallet" && <WalletScreen onBack={()=>T("account")}/>}
         {tab === "account" && (
           <>
           <Text style={s.h1}>Your account.</Text>
@@ -261,6 +264,7 @@ function Workspace() {
             <Text style={s.h2}>Personal details</Text>
             <Text style={s.text}>{data.me.email}</Text>
             <Text style={s.muted}>{data.me.role}</Text>
+            <Button secondary title="Wallet & online payments →" onPress={()=>{T("wallet");scroll.current?.scrollTo({y:0,animated:false})}}/>
             <Button secondary title="Your bookings →" onPress={()=>T("trips")}/>
             <Button secondary title="Help & support →" onPress={()=>T("inbox")}/>
             <Button
@@ -281,8 +285,7 @@ function Workspace() {
             />
             <Button title="Sign out" onPress={signout} />
             <Text style={s.muted}>
-              Location sharing is optional and stops when you sign out. Payments
-              and payouts are not processed in this app.
+              Location sharing is optional and stops when you sign out. Open Wallet for payments. Partner payouts are managed by Operations.
             </Text>
           </Card>
           </>
@@ -292,16 +295,16 @@ function Workspace() {
         {tabs.map(([id, label]) => (
           <Pressable
             accessibilityRole="tab"
-            accessibilityState={{ selected: tab === id }}
+            accessibilityState={{ selected: selectedTab === id }}
             key={id}
             onPress={() => {T(id);scroll.current?.scrollTo({y:0,animated:false});}}
             style={s.tab}
           >
-            <View style={{paddingHorizontal:15,paddingVertical:3,borderRadius:18,backgroundColor:tab===id?colors.lime:"transparent"}}><Icon name={id} active={tab===id}/></View>
+            <View style={{paddingHorizontal:15,paddingVertical:3,borderRadius:18,backgroundColor:selectedTab===id?colors.lime:"transparent"}}><Icon name={id} active={selectedTab===id}/></View>
             <Text
               style={{
-                color: tab === id ? colors.ink : colors.muted,
-                fontWeight: tab === id ? "700" : "400",
+                color: selectedTab === id ? colors.ink : colors.muted,
+                fontWeight: selectedTab === id ? "700" : "400",
                 fontSize: 10,
               }}
             >

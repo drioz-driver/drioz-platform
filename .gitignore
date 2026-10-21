@@ -26,3 +26,5 @@ dist/
 *.apk
 *.aab
 *.ipa
+
+supabase/.temp/

@@ -7,10 +7,12 @@ export function Trip({
   trip,
   partner = false,
   refresh,
+  onPay,
 }: {
   trip: any;
   partner?: boolean;
   refresh: () => Promise<void>;
+  onPay?:()=>void;
 }) {
   const [pin, P] = useState(""),
     [startCode, C] = useState(""),
@@ -49,6 +51,7 @@ export function Trip({
       <Text style={s.label}>
         {partner ? "Your estimated earnings" : "Agreed estimate"}
       </Text>
+      {!partner && trip.status === "completed" && onPay && <Button title="Pay online or from wallet" onPress={onPay}/>}
       {!partner && ["assigned", "arrived"].includes(trip.status) && (
         <Button
           disabled={busy}

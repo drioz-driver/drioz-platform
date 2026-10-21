@@ -9,7 +9,7 @@ function harness() {
   const hooks={...React,useState(initial){const i=index++;if(!(i in values))values[i]=initial;return [values[i],v=>values[i]=typeof v==='function'?v(values[i]):v]},useRef(v){const i=ri++;return refs[i]??(refs[i]={current:v})},useEffect(){}};
   const ui={Card:'Card',Button:'Button',Choices:'Choices',Field:'Field',Route:'Route',s:{},colors:{}};
   const mod={exports:{}};
-  new Function('require','module','exports',code)(name=>name==='react'?hooks:name==='react/jsx-runtime'?require(name):name==='react-native'?{Text:'Text',View:'View',Pressable:'Pressable',BackHandler:{}}:name==='expo-crypto'?{randomUUID:()=> 'test-key'}:name==='./api'?{money:n=>String(n),api:async(path,data)=>{calls.push({path,data});return path==='quote'?{id:'quote-test',total:24900}:{}}}:name==='./ui'?ui:name==='./AddressPicker'?{default:'AddressPicker'}:(()=>{throw Error(name)})(),mod,mod.exports);
+  new Function('require','module','exports',code)(name=>name==='react'?hooks:name==='react/jsx-runtime'?require(name):name==='react-native'?{Text:'Text',View:'View',Pressable:'Pressable',BackHandler:{}}:name==='expo-crypto'?{randomUUID:()=> 'test-key'}:name==='./api'?{money:n=>String(n),api:async(path,data)=>{calls.push({path,data});return path==='quote'?{id:'quote-test',total:24900}:{}}}:name==='./ui'?ui:name==='./AddressPicker'?{default:'AddressPicker'}:name==='./SchedulePicker'?{default:'SchedulePicker'}:(()=>{throw Error(name)})(),mod,mod.exports);
   function render(){index=ri=0;return mod.exports.default({onBooked:()=>booked++})}
   function nodes(node,out=[]){if(Array.isArray(node))node.forEach(n=>nodes(n,out));else if(node&&typeof node==='object'){out.push(node);nodes(node.props?.children,out)}return out}
   render();
@@ -25,13 +25,14 @@ for (const type of ['one-way','return','outstation']) {
   h.values[3]={...point,label:'Destination'};
   h.find('Button',p=>p.title==='Plan your journey →').props.onPress();
   assert.equal(h.values[0],1);
-  const labels=h.render().filter(n=>n.type==='Field').map(n=>n.props.label);
-  assert.equal(labels.some(l=>l.startsWith('Pickup date')),type==='outstation');
+  assert.equal(!!h.find('SchedulePicker'),type==='outstation');
   const groups=h.render().filter(n=>n.type==='Choices').map(n=>n.props.values.map(v=>v.value));
   assert.equal(groups.some(g=>g.includes('2')&&g.includes('8')),type==='return');
   assert.equal(groups.some(g=>g.includes('24')&&g.includes('72')),type==='outstation');
   assert.equal(groups.some(g=>g.includes('return')&&g.includes('one-way')),type==='outstation');
 }
+// Scheduling is reachable before either address is filled.
+{const h=harness();assert.equal(!!h.find('SchedulePicker'),false);h.find('Choices',p=>p.values.some(v=>v.value==='later')).props.set('later');assert.ok(h.find('SchedulePicker'));assert.equal(h.find('Button',p=>p.title==='Plan your journey →').props.disabled,true);}
 // Review must stay gated until a real estimate arrives, and no submit happens on navigation.
 (async()=>{
   const h=harness();h.values[2]=point;h.values[3]={...point,label:'Destination'};h.values[0]=1;

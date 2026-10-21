@@ -130,23 +130,24 @@ function Workspace() {
     return (
       <ScrollView contentContainerStyle={s.content}>
         <Brand />
-        <Text style={s.h1}>Let’s reconnect.</Text>
-        <Text style={s.muted}>We couldn’t load your account. Check your connection and try again.</Text>
+        <Text style={s.h1}>{error?"Let’s reconnect.":"Getting things ready."}</Text>
+        <Text style={s.muted}>{error?"Check your connection and try again.":"Loading your account and journeys…"}</Text>
         {error ? <Text style={s.error}>{error}</Text> : <Loading />}
-        <Button title="Reconnect" onPress={reload} />
-        <Button secondary title="Sign out" onPress={signout} />
+        {error&&<><Button title="Reconnect" onPress={reload}/><Button secondary title="Sign out" onPress={signout}/></>}
       </ScrollView>
     );
   const driver = data.me.role === "driver";
-  const selectedTab=tab==="wallet"?"account":tab;
+  const selectedTab=tab;
   const tabs = [
     ["home", driver ? "Driver" : "Home"],
-    ["trips", "Bookings"],
+    ["trips", "Rides"],
+    ["wallet", "Wallet"],
     ["inbox", "Support"],
     ["account", "Account"],
   ];
   return (
     <View style={s.screen}>
+        <View style={[s.row,{paddingHorizontal:18,paddingVertical:10,borderBottomWidth:1,borderColor:colors.line}]}><Brand compact /><Pressable accessibilityRole="button" accessibilityLabel="Open updates and support" onPress={()=>{T("inbox");scroll.current?.scrollTo({y:0,animated:false});}} style={{minWidth:44,minHeight:44,borderWidth:1,borderColor:colors.line,borderRadius:22,alignItems:"center",justifyContent:"center"}}><Icon name="help"/></Pressable></View>
       <ScrollView
         ref={scroll}
         style={{flex:1}}
@@ -156,24 +157,13 @@ function Workspace() {
           <RefreshControl refreshing={refreshing} onRefresh={reload} />
         }
       >
-        <View style={s.row}><Brand /><Pressable accessibilityRole="button" accessibilityLabel="Open updates and support" onPress={()=>{T("inbox");scroll.current?.scrollTo({y:0,animated:false});}} style={{minWidth:44,minHeight:44,borderWidth:1,borderColor:colors.line,borderRadius:22,alignItems:"center",justifyContent:"center"}}><Icon name="help"/></Pressable></View>
+
         {error && (
           <Text accessibilityRole="alert" style={s.error}>
             {error}
           </Text>
         )}
-        {tab === "home" &&
-          (driver ? (
-            <DriverScreen data={data} refresh={refresh} />
-          ) : (
-            <BookingScreen
-              onStageChange={()=>scroll.current?.scrollTo({y:0,animated:false})}
-              onBooked={() => {
-                reload();
-                T("trips");
-              }}
-            />
-          ))}
+        {driver ? tab === "home" && <DriverScreen data={data} refresh={refresh} onWallet={()=>{T("wallet");scroll.current?.scrollTo({y:0,animated:false})}}/> : <View style={{display:tab==='home'?'flex':'none',gap:16}}><BookingScreen onStageChange={()=>scroll.current?.scrollTo({y:0,animated:false})} onBooked={()=>{reload();T('trips')}}/></View>}
         {tab === "trips" && (
           <>
             <Text style={s.h1}>Your journeys.</Text>
@@ -228,8 +218,7 @@ function Workspace() {
         )}
         {tab === "inbox" && (
           <>
-            <Text style={s.h1}>How can we help?</Text>
-            <Text style={s.muted}>Get help with your account or a journey.</Text>
+
             <SupportScreen data={data} refresh={refresh} />
             <Text style={s.h2}>Your updates</Text>
             <Button
@@ -300,7 +289,7 @@ function Workspace() {
             onPress={() => {T(id);scroll.current?.scrollTo({y:0,animated:false});}}
             style={s.tab}
           >
-            <View style={{paddingHorizontal:15,paddingVertical:3,borderRadius:18,backgroundColor:selectedTab===id?colors.lime:"transparent"}}><Icon name={id} active={selectedTab===id}/></View>
+            <View style={{paddingHorizontal:12,paddingVertical:3,borderRadius:18,backgroundColor:selectedTab===id?colors.lime:"transparent"}}><Icon name={id} active={selectedTab===id}/></View>
             <Text
               style={{
                 color: selectedTab === id ? colors.ink : colors.muted,

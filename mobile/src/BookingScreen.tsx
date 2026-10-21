@@ -125,7 +125,7 @@ export default function BookingScreen({ onBooked, onStageChange }: { onBooked: (
       {stage > 0 && <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={()=>advance(stage-1)} style={{minHeight:48,justifyContent:"center"}}><Text style={s.text}>←  {stage === 2 ? "Review journey" : "Plan your journey"}</Text></Pressable>}
       {stage > 0 && <View style={{flexDirection:"row",gap:6}}>{[1,2].map(n=><View key={n} style={{flex:1,height:3,borderRadius:3,backgroundColor:stage>=n?colors.ink:colors.line}}/>)}</View>}
       <Text style={s.eyebrow}>{stage === 0 ? "YOUR CAR. YOUR TIME." : `STEP ${stage} OF 2`}</Text>
-      <Text style={s.h1}>{stage === 0 ? "Where shall we\ntake you?" : stage === 1 ? "Your journey,\nyour way." : "Review your journey."}</Text>
+      <Text style={s.h1}>{stage === 0 ? "Where shall we take you?" : stage === 1 ? "Your journey, your way." : "Review your journey."}</Text>
       {stage === 0 && <Text style={s.muted}>A personal driver for your own car.</Text>}
       {stage > 0 && <Card><Route pickup={pickup?.label || "Choose pickup"} destination={type === "return" ? undefined : drop?.label}/><Text style={s.muted}>{type === "return" ? `Round trip · ${hours} hours · Returns to pickup` : type === "outstation" ? `Outstation · ${direction === "return" ? "Return journey" : "One way"} · ${hours} hours` : "One way"}</Text></Card>}
       {stage === 0 && <Card>
@@ -153,11 +153,12 @@ export default function BookingScreen({ onBooked, onStageChange }: { onBooked: (
             { label: "Schedule later", value: "later" },
           ]}
         />}
+        {timing === "later" && type !== "outstation" && <SchedulePicker value={date} onChange={DA}/>}
         {type === "return" && <Text style={s.muted}>Keep the driver for your hourly package and return to your pickup location.</Text>}
         {type === "outstation" && <Text style={s.muted}>Plan a one-way or return journey outside the city. Schedule and usage details come next.</Text>}
         <Button title="Plan your journey →" disabled={!pickup || (type !== "return" && !drop)} onPress={()=>advance(1)}/>
       </Card>}
-      {stage === 0 && <View style={{padding:20,borderRadius:16,backgroundColor:colors.ink,gap:8}}><Text style={[s.h2,{color:colors.white}]}>Your car, in good hands.</Text><Text style={[s.muted,{color:"#d6dfc6"}]}>Availability and pricing are confirmed for your location.</Text></View>}
+      {stage === 0 && <Text style={s.muted}>Your car. A driver for the journey. Review your estimate before requesting.</Text>}
       {stage === 1 && <Card>
         <Text style={s.h2}>{type === "outstation" ? "Schedule your outstation journey" : "When do you need a driver?"}</Text>
         {type !== "outstation" && <Choices value={timing} set={TI} values={[{label:"Now",value:"now"},{label:"Schedule later",value:"later"}]}/>}

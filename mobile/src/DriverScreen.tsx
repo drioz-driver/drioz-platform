@@ -1,19 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { Text, Alert } from "react-native";
+import { Text, Alert, View, Pressable } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as DocumentPicker from "expo-document-picker";
 import { api, money } from "./api";
 import { startTracking, stopTracking, trackingActive } from "./location";
-import { Card, Button, Field, Choices, s } from "./ui";
+import { Card, Button, Disclosure, Field, Choices, colors, s } from "./ui";
 import { Trip } from "./Trips";
 export default function DriverScreen({
   data,
   refresh,
+  onWallet,
 }: {
   data: any;
   refresh: () => Promise<void>;
+  onWallet: () => void;
 }) {
   const d = data.driver;
+  const [wallet,W]=useState<any>(null);
+  useEffect(()=>{let active=true;api('billing/wallet').then(value=>{if(active)W(value.driver)}).catch(()=>{});return()=>{active=false}},[data]);
   const [tracking, ST] = useState(false),
     [busy, B] = useState(false),
     [error, E] = useState(""),
@@ -54,19 +58,13 @@ export default function DriverScreen({
   return (
     <>
       <Text style={s.h1}>Your driving day.</Text>
+      {data.bookings.filter((b:any)=>b.driver_id===data.me.id&&['assigned','arrived','in_progress'].includes(b.status)).map((b:any)=><Trip key={b.id} trip={b} partner refresh={refresh}/>)}
+      <Pressable accessibilityRole="button" accessibilityLabel="Open driver wallet" onPress={onWallet} style={{backgroundColor:colors.ink,padding:22,borderRadius:18,gap:12}}><View style={s.row}><Text style={{color:colors.lime,fontSize:12}}>RIDE CREDIT</Text><Text style={{color:colors.white}}>Wallet ↗</Text></View><Text style={{color:colors.white,fontSize:36}}>{wallet?money(Math.max(0,Number(wallet.promo)+Number(wallet.recharge))):'Open wallet'}</Text><Text style={{color:'#d6dfc6',fontSize:12}}>{wallet?'Available earnings '+money(wallet.earnings):'View your balances and earnings'}</Text></Pressable>
       <Card>
         <Text style={s.label}>
           Verification · {d?.verification || "Not applied"}
         </Text>
-        <Text style={s.price}>
-          {money(
-            completed.reduce((n: number, b: any) => n + b.partner_fare, 0),
-          )}
-        </Text>
-        <Text style={s.muted}>
-          {completed.length} completed journeys · Earnings are records; payouts
-          are arranged separately.
-        </Text>
+        <Text style={s.muted}>{completed.length} completed journeys</Text>
         {d?.verification === "approved" && (
           <>
             <Button
@@ -79,6 +77,7 @@ export default function DriverScreen({
                 })
               }
             />
+            <Disclosure title="Location & coverage">
             <Button
               secondary
               disabled={busy || (!d.online && !active)}
@@ -134,6 +133,7 @@ export default function DriverScreen({
                 Share location to show your GPS position on the map.
               </Text>
             )}
+            </Disclosure>
           </>
         )}
       </Card>
@@ -164,11 +164,7 @@ export default function DriverScreen({
               before pickup.
             </Text>
           )}
-          {data.bookings
-            .filter((b: any) => b.driver_id === data.me.id)
-            .map((b: any) => (
-              <Trip key={b.id} trip={b} partner refresh={refresh} />
-            ))}
+
         </>
       ) : (
         <>

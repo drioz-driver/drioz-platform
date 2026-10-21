@@ -36,7 +36,7 @@ export default function SupportScreen({
           services if you are in immediate danger.
         </Text>
         <Field label="Subject" value={subject} onChange={S} />
-        <Field label="Message" value={message} onChange={M} />
+        <Field multiline label="Message" value={message} onChange={M} />
         <Button
           disabled={
             busy || subject.trim().length < 5 || message.trim().length < 10
@@ -77,7 +77,7 @@ export default function SupportScreen({
               {r.name}: {r.message}
             </Text>
           ))}
-          <Field label="Reply" value={reply} onChange={R} />
+          <Field multiline label="Reply" value={reply} onChange={R} />
           <Button
             disabled={busy || !reply.trim()}
             title="Send reply"

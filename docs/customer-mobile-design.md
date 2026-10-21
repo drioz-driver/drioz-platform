@@ -1,0 +1,9 @@
+# Customer mobile and native reference lock
+
+Primary target: user-approved DRIOZ prototype and the newly approved driver mobile navigation. Preserve cream canvas, forest action buttons, lime selection pills, mint logo and genuine car photography. Secondary craft references: Refero craft-details.md (44px targets, correct keyboard, focus, reduced friction), existing native booking/route screens (stepwise booking).
+
+Decision ledger: public and signed-in customer mobile sites use four fixed destinations Home/Rides/Wallet/Account; guests can explore booking before sign-in, while personal rides and wallet require authentication. Short photo hero, visible booking form, compact header. Customer rides have their own destination. Support is reachable from Account. Native uses the same compact spacing and persistent wallet destination; existing booking, auth, payment and driver authorization are preserved. No invented balances or driver availability. Scheduling becomes visible at the point of selection. Location search retains Google attribution. Desktop remains usable.
+
+Validation target: public home and guest destinations, signed-in customer home/rides/account/wallet at 320/390/430px, Android booking/location/schedule/navigation; typechecks and production builds. iOS source is shared; signed simulator/device verification requires Apple hardware.
+
+Verified: 320/390/430px public and signed-in customer fixture reviews, no horizontal overflow at 320 and 430px, four always-visible web navigation destinations, guest account/rides panels. Local database/maps were unavailable; layout fixtures used public city data and did not submit bookings. Native Android screens Home/Rides/Wallet/Account/Support and scheduler inspected; existing customer wallet remained INR10. Shared native typecheck, iOS export, Android release build, eight scheduling/time tests and mocked native booking regression checks passed. Temporary fixture routes removed before release.

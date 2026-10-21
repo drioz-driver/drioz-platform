@@ -22,6 +22,7 @@ import AuthScreen from "./src/AuthScreen";
 import BookingScreen from "./src/BookingScreen";
 import WalletScreen from "./src/WalletScreen";
 import DriverScreen from "./src/DriverScreen";
+import RideOfferAlert from "./src/RideOfferAlert";
 import SupportScreen from "./src/SupportScreen";
 import { Trip } from "./src/Trips";
 import { Card, Button, Loading, Brand, Icon, Choices, s, colors } from "./src/ui";
@@ -280,6 +281,7 @@ function Workspace() {
           </>
         )}
       </ScrollView>
+      {driver&&<RideOfferAlert enabled={!!data.driver?.online&&!data.bookings.some((b:any)=>b.driver_id===data.me.id&&["assigned","arrived","in_progress"].includes(b.status))} driverId={data.me.id} onAccepted={refresh}/>}
       <View style={s.tabs}>
         {tabs.map(([id, label]) => (
           <Pressable

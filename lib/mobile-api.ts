@@ -42,6 +42,7 @@ export function mobilePathAllowed(path: string, method: string) {
   if (method === "GET")
     return (
       path === "snapshot" ||
+      path === "driver/offers" ||
       /^bookings\/[^/]+\/(invoice|location)$/.test(path) ||
       /^tickets\/[^/]+$/.test(path) ||
       /^documents\/[^/]+$/.test(path)
@@ -56,6 +57,7 @@ export function mobilePathAllowed(path: string, method: string) {
       "driver/apply",
       "driver/availability",
       "driver/location",
+      "driver/offers/pass",
       "documents",
       "tickets",
       "notifications/read",
@@ -106,6 +108,7 @@ export async function handleMobile(
       runtime.DRIOZ_OWNER_EMAIL || "",
       runtime.TRIP_PIN_SECRET || "",
       runtime.RAZORPAY_KEY_ID,
+      true,
     );
     const actor = await ops.actor(identity);
     let data: any = null;

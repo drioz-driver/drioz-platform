@@ -140,30 +140,7 @@ export default function DriverScreen({
       {d?.verification === "approved" ? (
         <>
           <Text style={s.h2}>Trip requests</Text>
-          {data.available.length ? (
-            data.available.map((b: any) => (
-              <Card key={b.id}>
-                <Text style={s.text}>
-                  {b.pickup} → {b.destination}
-                </Text>
-                <Text style={s.price}>{money(b.partner_fare)}</Text>
-                <Button
-                  disabled={busy || active}
-                  title="Accept journey"
-                  onPress={() =>
-                    run(() =>
-                      api(`bookings/${b.id}/assign`, { driverId: data.me.id }),
-                    )
-                  }
-                />
-              </Card>
-            ))
-          ) : (
-            <Text style={s.muted}>
-              No eligible requests right now. Scheduled trips appear 30 minutes
-              before pickup.
-            </Text>
-          )}
+          <Card><Text style={s.h2}>Ready for your next ride.</Text><Text style={s.muted}>Stay online. New requests arrive as a 10-second offer with a countdown.</Text></Card>
 
         </>
       ) : (

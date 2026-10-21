@@ -90,3 +90,6 @@ button>.drioz-steering-spinner{width:20px;height:20px;margin-right:8px}
 }
 
 @media(max-width:800px){.guest-booking .mobile-partner-link{display:block;flex-basis:100%;font-size:12px;padding:10px 0}.guest-booking .site-header nav>a:last-child{min-height:44px}}
+
+.booking-timing{margin:0 0 18px}.booking-timing>span{display:block;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#627269;margin:0 0 9px}.booking-timing-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.booking-timing-options button{min-height:44px;padding:11px 8px;font-size:12px;background:#fbfcf7;border:1px solid #dce0d3;border-radius:8px;color:#253e30}.booking-timing-options button[aria-pressed=true]{background:#253e30;color:#fff;border-color:#253e30}.booking-timing-options button:focus-visible{outline:2px solid #00ce8b;outline-offset:3px}.booking-schedule-fields{padding:12px;background:#eef1e6;border:1px solid #dce0d3;border-radius:10px;margin:0 0 18px;scroll-margin:16px}.booking-schedule-fields .field{margin-bottom:0}.booking-schedule-fields input{min-width:0;width:100%}
+@media(max-width:800px){.booking-timing>span{font-size:11px;letter-spacing:0;color:#253e30}.booking-timing-options button{font-size:13px;min-height:48px;border-radius:12px}.booking-schedule-fields{padding:12px;gap:10px}.booking-schedule-fields .field>span{font-size:10px}}

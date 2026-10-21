@@ -143,7 +143,7 @@ export default function BookingScreen({ onBooked, onStageChange }: { onBooked: (
         />
         <AddressPicker title="Pickup" point={pickup} onSelect={P} />
         {type !== "return" && (
-          <AddressPicker title="Destination" point={drop} onSelect={D} />
+          <AddressPicker title="Destination" point={drop} initialPoint={pickup} onSelect={D} />
         )}
         {type !== "outstation" && <Choices
           value={timing}

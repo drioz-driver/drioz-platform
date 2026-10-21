@@ -7,6 +7,7 @@ type Runtime = {
   BUCKET: any;
   DRIOZ_OWNER_EMAIL?: string;
   TRIP_PIN_SECRET?: string;
+  RAZORPAY_KEY_ID?: string;
 };
 export async function mobileIdentity(
   request: Request,
@@ -104,6 +105,7 @@ export async function handleMobile(
       runtime.BUCKET,
       runtime.DRIOZ_OWNER_EMAIL || "",
       runtime.TRIP_PIN_SECRET || "",
+      runtime.RAZORPAY_KEY_ID,
     );
     const actor = await ops.actor(identity);
     let data: any = null;

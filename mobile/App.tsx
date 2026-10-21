@@ -285,7 +285,7 @@ function Workspace() {
             />
             <Button title="Sign out" onPress={signout} />
             <Text style={s.muted}>
-              Location sharing is optional and stops when you sign out. Open Wallet for payments. Partner payouts are managed by Operations.
+              Location sharing is optional and stops when you sign out. Open Wallet for payments. Driver Wallet separates available earnings, welcome credit and recharge funds.
             </Text>
           </Card>
           </>

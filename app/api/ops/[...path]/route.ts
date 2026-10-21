@@ -7,9 +7,9 @@ async function route(request:Request,context:{params:Promise<{path:string[]}>}){
  const auth=authContext(request,env as unknown as AuthRuntime);
  const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
  try{
-  const runtime=env as unknown as {DB:D1Database;BUCKET:R2Bucket;DRIOZ_OWNER_EMAIL?:string;TRIP_PIN_SECRET?:string;GOOGLE_MAPS_BROWSER_KEY?:string};
+  const runtime=env as unknown as {DB:D1Database;BUCKET:R2Bucket;DRIOZ_OWNER_EMAIL?:string;TRIP_PIN_SECRET?:string;GOOGLE_MAPS_BROWSER_KEY?:string;RAZORPAY_KEY_ID?:string};
   if(!runtime.DB)throw new ApiError(503,'Database unavailable');
-  const ops=operations(runtime.DB,runtime.BUCKET,runtime.DRIOZ_OWNER_EMAIL||'',runtime.TRIP_PIN_SECRET||'');
+  const ops=operations(runtime.DB,runtime.BUCKET,runtime.DRIOZ_OWNER_EMAIL||'',runtime.TRIP_PIN_SECRET||'',runtime.RAZORPAY_KEY_ID);
   const path=(await context.params).path.join('/');
   if(path==='health'&&request.method==='GET'){await runtime.DB.prepare('SELECT id FROM users LIMIT 1').all();return Response.json({status:'ready',database:'connected',documents:!!runtime.BUCKET},{headers})}
   const identity=await auth.identity();
@@ -28,7 +28,7 @@ async function route(request:Request,context:{params:Promise<{path:string[]}>}){
   }
   const snapshotDb=runtime.DB as unknown as {readSnapshot?: (work:(db:any)=>Promise<any>)=>Promise<any>};
   const result=path==='snapshot'&&request.method==='GET'&&snapshotDb.readSnapshot
-    ? await snapshotDb.readSnapshot(db=>operations(db,runtime.BUCKET,runtime.DRIOZ_OWNER_EMAIL||'',runtime.TRIP_PIN_SECRET||'').handle(actor,path,request.method,data,request))
+    ? await snapshotDb.readSnapshot(db=>operations(db,runtime.BUCKET,runtime.DRIOZ_OWNER_EMAIL||'',runtime.TRIP_PIN_SECRET||'',runtime.RAZORPAY_KEY_ID).handle(actor,path,request.method,data,request))
     : await ops.handle(actor,path,request.method,data,request);
   if(path==='snapshot'&&result.integrations&&runtime.GOOGLE_MAPS_BROWSER_KEY)result.integrations.maps='Google address search and driving route estimates connected';
   return auth.apply(result instanceof Response?result:Response.json(result,{headers}));

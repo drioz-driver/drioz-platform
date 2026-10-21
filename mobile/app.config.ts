@@ -30,6 +30,7 @@ const config: ExpoConfig = {
       : {}),
   },
   plugins: [
+    ["expo-audio", {microphonePermission:false,recordAudioAndroid:false,enableBackgroundPlayback:false,enableBackgroundRecording:false}],
     "expo-dev-client",
     "expo-secure-store",
     "expo-document-picker",

@@ -4,6 +4,7 @@ import * as Crypto from "expo-crypto";
 import { api, money, type Point } from "./api";
 import { Card, Button, Choices, Field, Route, colors, s } from "./ui";
 import AddressPicker from "./AddressPicker";
+import SchedulePicker from "./SchedulePicker";
 export default function BookingScreen({ onBooked, onStageChange }: { onBooked: () => void; onStageChange?: () => void }) {
   const [stage, setStage] = useState(0), [retry, retryEstimate] = useState(0);
   function advance(next:number) { setStage(next); onStageChange?.(); }
@@ -25,7 +26,7 @@ export default function BookingScreen({ onBooked, onStageChange }: { onBooked: (
     key = useRef("");
   const scheduledAt =
     timing === "later" || type === "outstation"
-      ? Date.parse(date.replace(" ", "T"))
+      ? Date.parse(date.replace(" ", "T")+":00+05:30")
       : null;
   const signature = JSON.stringify({
     retry,
@@ -161,12 +162,7 @@ export default function BookingScreen({ onBooked, onStageChange }: { onBooked: (
         <Text style={s.h2}>{type === "outstation" ? "Schedule your outstation journey" : "When do you need a driver?"}</Text>
         {type !== "outstation" && <Choices value={timing} set={TI} values={[{label:"Now",value:"now"},{label:"Schedule later",value:"later"}]}/>}
         {(timing === "later" || type === "outstation") && (
-          <Field
-            label="Pickup date and time (YYYY-MM-DD HH:mm)"
-            value={date}
-            onChange={DA}
-            placeholder="YYYY-MM-DD HH:mm"
-          />
+          <SchedulePicker value={date} onChange={DA}/>
         )}
         {type !== "one-way" && (
           <>

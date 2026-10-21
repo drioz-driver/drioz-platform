@@ -1,0 +1,24 @@
+ 'use client';
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {pickupChoice,pickupDates,pickupHours,pickupMinutes,pickupPeriods,pickupTimestamp,pickupTime,type PickupChoice} from '@/lib/pickup-wheel';
+const rowHeight=44;
+function Wheel({label,options,value,onChange,active}:{active:boolean;label:string;options:{value:string;label:string}[];value:string;onChange:(v:string)=>void}){
+ const ref=useRef<HTMLDivElement>(null),settle=useRef<ReturnType<typeof setTimeout>|null>(null),scrolling=useRef(false);
+ const index=Math.max(0,options.findIndex(o=>o.value===value));
+ useEffect(()=>{const frame=requestAnimationFrame(()=>{if(ref.current&&!scrolling.current)ref.current.scrollTop=index*rowHeight});return()=>cancelAnimationFrame(frame)},[index,active]);
+ useEffect(()=>()=>{if(settle.current)clearTimeout(settle.current)},[]);
+ function select(i:number){const bounded=Math.max(0,Math.min(options.length-1,i));onChange(options[bounded].value);ref.current?.scrollTo({top:bounded*rowHeight,behavior:'auto'})}
+ return <div className="wheel-column"><span>{label}</span><div className="wheel-scroll" ref={ref} role="listbox" aria-label={label} tabIndex={0} aria-activedescendant={'wheel-'+label+'-'+index} onKeyDown={e=>{const move=e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0;if(move){e.preventDefault();select(index+move)}else if(e.key==='Home'||e.key==='End'){e.preventDefault();select(e.key==='Home'?0:options.length-1)}}} onScroll={()=>{scrolling.current=true;const visible=Math.max(0,Math.min(options.length-1,Math.round((ref.current?.scrollTop||0)/rowHeight)));if(options[visible].value!==value)onChange(options[visible].value);if(settle.current)clearTimeout(settle.current);settle.current=setTimeout(()=>{scrolling.current=false;select(Math.round((ref.current?.scrollTop||0)/rowHeight))},100)}}>{options.map((option,i)=><div key={option.value} id={'wheel-'+label+'-'+i} role="option" aria-selected={option.value===value} className={option.value===value?'selected':''} onClick={()=>select(i)}>{option.label}</div>)}</div></div>;
+}
+export default function ScheduleWheel({initial,onChange}:{initial?:Record<string,string>;onChange:()=>void}){
+ const [date,D]=useState(initial?.pickupDate||''),[time,T]=useState(initial?.pickupTime||''),[open,O]=useState(false),[choice,C]=useState<PickupChoice>(()=>pickupChoice(initial?.pickupDate,initial?.pickupTime)),[error,E]=useState('');
+ const dialog=useRef<HTMLDialogElement>(null),trigger=useRef<HTMLButtonElement>(null);
+ const dates=useMemo(()=>pickupDates(choice.date),[choice.date,open]);
+ useEffect(()=>{if(open)dialog.current?.showModal();else if(dialog.current?.open)dialog.current.close()},[open]);
+ const timestamp=pickupTimestamp(choice),future=Number.isFinite(timestamp)&&timestamp>Date.now();
+ function close(){O(false);trigger.current?.focus()}
+ const summary=date&&time?`${new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kolkata'}).format(new Date(date+'T'+time+':00+05:30'))} · ${pickupChoice(date,time).hour}:${time.slice(3)} ${pickupChoice(date,time).period}`:'Choose pickup date & time';
+ return <><input type="hidden" name="pickupDate" value={date}/><input type="hidden" name="pickupTime" value={time}/><button ref={trigger} type="button" className="schedule-wheel-trigger" aria-haspopup="dialog" onClick={()=>{C(pickupChoice(date,time));E('');O(true)}}><span>Pickup date & time · IST</span><strong>{summary}</strong><span aria-hidden="true">⌄</span></button>
+ <dialog ref={dialog} className="schedule-wheel-dialog" aria-labelledby="schedule-wheel-title" onCancel={()=>O(false)} onClose={()=>O(false)}><div className="wheel-dialog-heading"><div><h2 id="schedule-wheel-title">Schedule your pickup</h2><p>Indian Standard Time · IST</p></div><button type="button" onClick={close} aria-label="Close date and time picker">×</button></div><div className="wheel-grid"><div className="wheel-selection-line" aria-hidden="true"/><Wheel active={open} label="Date" options={dates} value={choice.date} onChange={date=>C(c=>({...c,date}))}/><Wheel active={open} label="Hour" options={pickupHours} value={choice.hour} onChange={hour=>C(c=>({...c,hour}))}/><Wheel active={open} label="Minute" options={pickupMinutes} value={choice.minute} onChange={minute=>C(c=>({...c,minute}))}/><Wheel active={open} label="AM/PM" options={pickupPeriods} value={choice.period} onChange={period=>C(c=>({...c,period}))}/></div>
+ {!future&&<p role="status" className="wheel-error">Choose a pickup time in the future.</p>}{error&&<p role="alert">{error}</p>}<div className="wheel-dialog-actions"><button type="button" onClick={close}>Cancel</button><button type="button" className="primary" disabled={!future} onClick={()=>{if(!Number.isFinite(pickupTimestamp(choice))||pickupTimestamp(choice)<=Date.now()){E('Choose a pickup time in the future.');return}D(choice.date);T(pickupTime(choice));onChange();close()}}>Confirm pickup time</button></div></dialog></>;
+}

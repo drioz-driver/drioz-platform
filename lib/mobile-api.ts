@@ -28,8 +28,10 @@ export async function mobileIdentity(
       signal: AbortSignal.timeout(8000),
     },
   );
-  if (!response.ok)
-    throw new ApiError(401, "Your session has expired. Sign in again.");
+  if (!response.ok) {
+    if ([400,401,403].includes(response.status))throw new ApiError(401, "Your session has expired. Sign in again.");
+    throw new ApiError(503, "Account verification is temporarily unavailable. Please retry.");
+  }
   const identity = managedIdentity(await response.json());
   if (!identity)
     throw new ApiError(401, "Verify your account before continuing");

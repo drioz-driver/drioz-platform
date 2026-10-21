@@ -19,3 +19,5 @@ for(const [name,picker] of Object.entries({web,native})){
   assert.equal(dates.at(-1)?.value,'2099-05-20');
  });
 }
+
+test('time wheels wrap in both directions without changing their logical values',()=>{for(const picker of [web,native]){assert.equal(picker.wheelIndex(60,60),0);assert.equal(picker.wheelIndex(-1,60),59);assert.equal(picker.wheelIndex(300,60),0);assert.equal(picker.wheelIndex(12,12),0);assert.equal(picker.wheelIndex(2,2),0)}});

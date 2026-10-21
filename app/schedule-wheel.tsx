@@ -1,19 +1,24 @@
  'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {pickupChoice,pickupDates,pickupHours,pickupMinutes,pickupPeriods,pickupTimestamp,pickupTime,type PickupChoice} from '@/lib/pickup-wheel';
+import {wheelIndex,pickupChoice,pickupDates,pickupHours,pickupMinutes,pickupPeriods,pickupTimestamp,pickupTime,type PickupChoice} from '@/lib/pickup-wheel';
 const rowHeight=44;
 function Wheel({label,options,value,onChange,active}:{active:boolean;label:string;options:{value:string;label:string}[];value:string;onChange:(v:string)=>void}){
- const ref=useRef<HTMLDivElement>(null),settle=useRef<ReturnType<typeof setTimeout>|null>(null),scrolling=useRef(false);
+ const loop=label!=='Date',length=options.length;
+ const rows=useMemo(()=>loop?Array.from({length:length*5},(_,i)=>options[i%length]):options,[options,loop,length]);
  const index=Math.max(0,options.findIndex(o=>o.value===value));
- useEffect(()=>{const frame=requestAnimationFrame(()=>{if(ref.current&&!scrolling.current)ref.current.scrollTop=index*rowHeight});return()=>cancelAnimationFrame(frame)},[index,active]);
+ const ref=useRef<HTMLDivElement>(null),settle=useRef<ReturnType<typeof setTimeout>|null>(null),scrolling=useRef(false),position=useRef((loop?length*2:0)+index);
+ const [visible,V]=useState(position.current);
+ const change=useRef(onChange);change.current=onChange;
+ const bounded=(i:number)=>Math.max(0,Math.min(rows.length-1,i));
+ function select(i:number){const next=bounded(i);position.current=next;V(next);change.current(options[wheelIndex(next,length)].value);ref.current?.scrollTo({top:next*rowHeight,behavior:'auto'})}
+ useEffect(()=>{const frame=requestAnimationFrame(()=>{if(ref.current&&!scrolling.current){const next=(loop?length*2:0)+index;position.current=next;V(next);ref.current.scrollTop=next*rowHeight}});return()=>cancelAnimationFrame(frame)},[index,active,loop,length]);
  useEffect(()=>()=>{if(settle.current)clearTimeout(settle.current)},[]);
- function select(i:number){const bounded=Math.max(0,Math.min(options.length-1,i));onChange(options[bounded].value);ref.current?.scrollTo({top:bounded*rowHeight,behavior:'auto'})}
- return <div className="wheel-column"><span>{label}</span><div className="wheel-scroll" ref={ref} role="listbox" aria-label={label} tabIndex={0} aria-activedescendant={'wheel-'+label+'-'+index} onKeyDown={e=>{const move=e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0;if(move){e.preventDefault();select(index+move)}else if(e.key==='Home'||e.key==='End'){e.preventDefault();select(e.key==='Home'?0:options.length-1)}}} onScroll={()=>{scrolling.current=true;const visible=Math.max(0,Math.min(options.length-1,Math.round((ref.current?.scrollTop||0)/rowHeight)));if(options[visible].value!==value)onChange(options[visible].value);if(settle.current)clearTimeout(settle.current);settle.current=setTimeout(()=>{scrolling.current=false;select(Math.round((ref.current?.scrollTop||0)/rowHeight))},100)}}>{options.map((option,i)=><div key={option.value} id={'wheel-'+label+'-'+i} role="option" aria-selected={option.value===value} className={option.value===value?'selected':''} onClick={()=>select(i)}>{option.label}</div>)}</div></div>;
+ return <div className="wheel-column"><span>{label}</span><div className="wheel-scroll" ref={ref} role="listbox" aria-label={label} tabIndex={0} aria-activedescendant={'wheel-'+label+'-'+visible} onKeyDown={e=>{const step=e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0;if(step){e.preventDefault();select(loop?length*2+wheelIndex(position.current+step,length):position.current+step)}else if(e.key==='Home'||e.key==='End'){e.preventDefault();select((loop?length*2:0)+(e.key==='Home'?0:length-1))}}} onScroll={()=>{scrolling.current=true;const next=bounded(Math.round((ref.current?.scrollTop||0)/rowHeight));position.current=next;V(next);change.current(options[next%length].value);if(settle.current)clearTimeout(settle.current);settle.current=setTimeout(()=>{const centered=loop?length*2+wheelIndex(position.current,length):position.current;select(centered);scrolling.current=false},120)}}>{rows.map((option,i)=><div key={i} id={'wheel-'+label+'-'+i} role="option" aria-selected={i===visible} className={i===visible?'selected':''} onClick={()=>select(i)}>{option.label}</div>)}</div></div>;
 }
 export default function ScheduleWheel({initial,onChange}:{initial?:Record<string,string>;onChange:()=>void}){
  const [date,D]=useState(initial?.pickupDate||''),[time,T]=useState(initial?.pickupTime||''),[open,O]=useState(false),[choice,C]=useState<PickupChoice>(()=>pickupChoice(initial?.pickupDate,initial?.pickupTime)),[error,E]=useState('');
  const dialog=useRef<HTMLDialogElement>(null),trigger=useRef<HTMLButtonElement>(null);
- const dates=useMemo(()=>pickupDates(choice.date),[choice.date,open]);
+ const dates=useMemo(()=>pickupDates(date),[date,open]);
  useEffect(()=>{if(open)dialog.current?.showModal();else if(dialog.current?.open)dialog.current.close()},[open]);
  const timestamp=pickupTimestamp(choice),future=Number.isFinite(timestamp)&&timestamp>Date.now();
  function close(){O(false);trigger.current?.focus()}

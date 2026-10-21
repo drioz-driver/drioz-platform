@@ -11,6 +11,7 @@ export class APIError extends Error {
     super(message);
   }
 }
+let refreshing:ReturnType<typeof supabase.auth.refreshSession>|null=null;
 export async function api(
   path: string,
   data?: unknown,
@@ -33,8 +34,10 @@ export async function api(
     signal: AbortSignal.timeout(20000),
   });
   if (response.status === 401 && retry) {
-    const refreshed = await supabase.auth.refreshSession();
-    if (!refreshed.error) return api(path, data, false);
+    if(!refreshing)refreshing=supabase.auth.refreshSession().finally(()=>{refreshing=null});
+    const refreshed=await refreshing;
+    if(!refreshed.error)return api(path,data,false);
+    if(refreshed.error.status===undefined||refreshed.error.status>=500||refreshed.error.status===429)throw new APIError("Could not reconnect. Check your connection and retry.",503);
   }
   if (
     !(response.headers.get("content-type") || "").includes("application/json")

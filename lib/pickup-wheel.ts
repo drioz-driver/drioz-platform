@@ -1,4 +1,6 @@
 export type PickupChoice={date:string;hour:string;minute:string;period:string};
+export function wheelIndex(index:number,length:number){return ((index%length)+length)%length}
+const dateLabel=new Intl.DateTimeFormat('en-IN',{timeZone:'UTC',weekday:'short',day:'numeric',month:'short'});
 const pad=(n:number)=>String(n).padStart(2,'0');
 export function pickupTimestamp(choice:PickupChoice){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(choice.date)||! /^(0?[1-9]|1[0-2])$/.test(choice.hour)||! /^[0-5]\d$/.test(choice.minute)||!['AM','PM'].includes(choice.period))return NaN;
@@ -18,7 +20,7 @@ export function pickupDates(selected:string,now=Date.now()){
  const start=Date.parse(today+'T00:00:00Z');
  const dates=Array.from({length:366},(_,i)=>new Date(start+i*86400000).toISOString().slice(0,10));
  if(selected>=today&&!dates.includes(selected)&&/^\d{4}-\d{2}-\d{2}$/.test(selected))dates.push(selected);
- return dates.map(value=>({value,label:value===today?'Today':new Intl.DateTimeFormat('en-IN',{timeZone:'UTC',weekday:'short',day:'numeric',month:'short'}).format(new Date(value+'T00:00:00Z'))}));
+ return dates.map(value=>({value,label:value===today?'Today':dateLabel.format(new Date(value+'T00:00:00Z'))}));
 }
 export const pickupHours=Array.from({length:12},(_,i)=>({value:pad(i+1),label:pad(i+1)}));
 export const pickupMinutes=Array.from({length:60},(_,i)=>({value:pad(i),label:pad(i)}));

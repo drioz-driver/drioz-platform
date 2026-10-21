@@ -32,13 +32,15 @@ function Workspace() {
     [error, E] = useState(""),
     [refreshing, R] = useState(false);
   const scroll = useRef<ScrollView>(null);
+  const refreshPending=useRef<Promise<void>|null>(null),sessionUser=useRef<string|null>(null);
   const [journeyTab, setJourneyTab] = useState("upcoming");
   const generation = useRef(0),
     mounted = useRef(true);
-  async function refresh() {
-    const current = generation.current;
-    const result = await api("snapshot");
-    if (mounted.current && current === generation.current) D(result);
+  function refresh():Promise<void> {
+    if(refreshPending.current)return refreshPending.current;
+    const current=generation.current;
+    const pending=api("snapshot").then(result=>{if(mounted.current&&current===generation.current){D(result);E("")}}).finally(()=>{if(refreshPending.current===pending)refreshPending.current=null});
+    refreshPending.current=pending;return pending;
   }
   useEffect(() => {
     mounted.current = true;
@@ -52,7 +54,7 @@ function Workspace() {
     });
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, next) => {
-        generation.current++;
+        if(sessionUser.current!==(next?.user.id||null)){generation.current++;refreshPending.current=null;sessionUser.current=next?.user.id||null}
         S(next);
         if (!next) {
           D(null);
@@ -92,7 +94,7 @@ function Workspace() {
     load();
     const interval = setInterval(() => {
       if (AppState.currentState === "active") load();
-    }, 15000);
+    }, 30000);
     return () => {
       active = false;
       clearInterval(interval);

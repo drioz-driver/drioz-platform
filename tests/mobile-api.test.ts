@@ -1,4 +1,5 @@
 import test from "node:test";
+import {operations} from "../lib/operations.ts";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
@@ -121,6 +122,7 @@ test("native route excludes staff and mutation endpoints from the app surface", 
 });
 test("native customer can estimate and book without browser cookies, with private trip isolation", async () => {
   const { sql, runtime } = setup();
+  await operations(runtime.DB,null,'owner@example.com','test-only-trip-secret-at-least-thirty-two-chars').seed();
   let r = await handleMobile(request("snapshot"), "snapshot", runtime, fetcher);
   assert.equal(r.status, 200);
   assert.equal(((await r.json()) as any).me.role, "customer");
@@ -165,3 +167,5 @@ test("native customer can estimate and book without browser cookies, with privat
   );
   assert.equal(r.status, 413);
 });
+
+test("temporary auth outages preserve the native session instead of returning 401",async()=>{const {runtime}=setup();for(const status of [429,500,503])await assert.rejects(mobileIdentity(request("snapshot"),runtime,(async()=>Response.json({message:"unavailable"},{status})) as typeof fetch),(e:any)=>e.status===503);await assert.rejects(mobileIdentity(request("snapshot"),runtime,(async()=>Response.json({message:"expired"},{status:401})) as typeof fetch),(e:any)=>e.status===401)});

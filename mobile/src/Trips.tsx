@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Alert, Linking } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { api, money } from "./api";
-import { Card, Button, Field, Route, colors, s } from "./ui";
+import { Card, Button, Field, Choices, Route, colors, s } from "./ui";
 export function Trip({
   trip,
   partner = false,
@@ -19,7 +19,10 @@ export function Trip({
     [busy, B] = useState(false),
     [error, E] = useState(""),
     [position, L] = useState<any>(null),
-    [statement, S] = useState<any>(null);
+    [statement, S] = useState<any>(null),
+    [cancelOpen, showCancel] = useState(false),
+    [cancelReason, setCancelReason] = useState(""),
+    [cancelNote, setCancelNote] = useState("");
   async function act(path: string, data?: unknown) {
     B(true);
     E("");
@@ -119,6 +122,27 @@ export function Trip({
             )
           }
         />
+      )}
+      {partner && ["assigned", "arrived"].includes(trip.status) && (
+        <View style={{gap: 12}}>
+          <Button secondary disabled={busy} title="Cancel accepted ride" onPress={() => showCancel(!cancelOpen)} />
+          {cancelOpen && <>
+            <Text style={s.label}>Why do you need to cancel?</Text>
+            <Choices value={cancelReason} set={setCancelReason} values={[
+              {label: "Vehicle / travel issue", value: "Vehicle or travel issue"},
+              {label: "Personal emergency", value: "Personal emergency"},
+              {label: "Customer unavailable", value: "Customer unavailable"},
+              {label: "Other", value: "Other"},
+            ]}/>
+            {cancelReason === "Other" && <Field label="Cancellation reason" value={cancelNote} onChange={setCancelNote} multiline />}
+            <Text style={s.muted}>The customer will be notified. The ride stays in booking history.</Text>
+            <Button secondary disabled={busy || !cancelReason || (cancelReason === "Other" && cancelNote.trim().length < 3)} title="Confirm cancellation" onPress={() => Alert.alert(
+              "Cancel this accepted ride?", "This ends your booking and notifies the customer. You can only cancel before the journey starts.", [
+                {text: "Keep ride", style: "cancel"},
+                {text: "Cancel ride", style: "destructive", onPress: () => act(`bookings/${trip.id}/status`, {status: "cancelled", reason: cancelReason === "Other" ? cancelNote.trim().slice(0,500) : cancelReason})},
+              ])}/>
+          </>}
+        </View>
       )}
       {partner && active && (
         <Button

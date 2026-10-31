@@ -89,3 +89,36 @@ test('seeded Hyderabad uses its fare and accepts bookings with an approved partn
  const quote=await ops.handle(customer,'quote','POST',input);assert.equal(quote.total,estimate.total);const booking=await ops.handle(customer,'bookings','POST',{quoteId:quote.id,key:crypto.randomUUID()});assert.equal(booking.status,'requested');assert.equal(booking.fare,estimate.total);
  await ops.handle(owner,'cities','POST',{...configuration,enabled:false});assert.equal((await ops.handle(customer,'estimate','POST',input)).bookingAvailable,false);await rejectsStatus(ops.handle(customer,'quote','POST',input),409);
 });
+
+test('assigned drivers can cancel before start with a reason, notifying the customer and preserving history', async () => {
+ const {ops,sql}=setup(); const {owner,customer,driver}=await actors(ops);
+ const b=await trip(ops,owner,customer); await approve(sql,driver);
+ sql.prepare("UPDATE users SET role='driver' WHERE id=?").run(driver.id);
+ const partner=await ops.actor({id:driver.id,email:driver.email,name:driver.name});
+ await ops.handle(partner,`bookings/${b.id}/assign`,'POST',{driverId:driver.id});
+ await rejectsStatus(ops.handle(partner,`bookings/${b.id}/status`,'POST',{status:'cancelled'}),400);
+ await ops.handle(partner,`bookings/${b.id}/status`,'POST',{status:'cancelled',reason:'Personal emergency'});
+ const saved=sql.prepare('SELECT * FROM bookings WHERE id=?').get(b.id) as any;
+ assert.equal(saved.status,'cancelled'); assert.equal(saved.driver_id,driver.id);
+ const audit=sql.prepare("SELECT details FROM audit WHERE target=? AND action='cancelled'").get(b.id) as any;
+ assert.deepEqual(JSON.parse(audit.details),{reason:'Personal emergency',cancelledBy:'driver'});
+ assert.ok((sql.prepare("SELECT count(*) n FROM notifications WHERE user_id=? AND message LIKE '%cancelled%'").get(customer.id) as any).n>0);
+ assert.equal((sql.prepare('SELECT count(*) n FROM payouts WHERE booking_id=?').get(b.id) as any).n,0);
+ await rejectsStatus(ops.handle(partner,`bookings/${b.id}/status`,'POST',{status:'cancelled',reason:'Personal emergency'}),409);
+});
+test('driver cancellation rejects other drivers and cannot cancel a journey after start or completion', async () => {
+ const {ops,sql}=setup(); const {owner,customer,driver}=await actors(ops);
+ const b=await trip(ops,owner,customer); await approve(sql,driver);
+ sql.prepare("UPDATE users SET role='driver' WHERE id=?").run(driver.id);
+ const partner=await ops.actor({id:driver.id,email:driver.email,name:driver.name});
+ await ops.handle(partner,`bookings/${b.id}/assign`,'POST',{driverId:driver.id});
+ const other=await ops.actor({id:'other-driver',email:'driver2@example.com',name:'Other Driver',accountIntent:'driver'});
+ await rejectsStatus(ops.handle(other,`bookings/${b.id}/status`,'POST',{status:'cancelled',reason:'Personal emergency'}),403);
+ sql.prepare("UPDATE bookings SET status='in_progress' WHERE id=?").run(b.id);
+ await rejectsStatus(ops.handle(partner,`bookings/${b.id}/status`,'POST',{status:'cancelled',reason:'Personal emergency'}),409);
+ sql.prepare("UPDATE bookings SET status='completed' WHERE id=?").run(b.id);
+ await rejectsStatus(ops.handle(partner,`bookings/${b.id}/status`,'POST',{status:'cancelled',reason:'Personal emergency'}),409);
+ sql.prepare("UPDATE bookings SET status='arrived' WHERE id=?").run(b.id);
+ await ops.handle(partner,`bookings/${b.id}/status`,'POST',{status:'cancelled',reason:'Customer unavailable'});
+ assert.equal((sql.prepare('SELECT status FROM bookings WHERE id=?').get(b.id) as any).status,'cancelled');
+});

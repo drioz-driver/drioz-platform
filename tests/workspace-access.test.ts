@@ -1,20 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {allowedWorkspace,canUsePartner,canUseOperations} from '../lib/workspace-access.ts';
+import {allowedWorkspace,canUsePartner,canUseOperations,homePortal} from '../lib/workspace-access.ts';
 import {bookingInput} from '../lib/booking-input.ts';
-test('customer cannot navigate to partner or operations through a direct hash',()=>{
- assert.equal(canUsePartner('customer',false),false);assert.equal(canUsePartner('customer',true),false);assert.equal(canUseOperations('customer'),false);
- assert.equal(allowedWorkspace('driver','customer',false),'customer');assert.equal(allowedWorkspace('admin','customer',false),'customer');
- assert.equal(allowedWorkspace('support','customer',false),'support');
+test('customer site never exposes the partner workspace',()=>{
+ assert.equal(canUsePartner('customer',false),false);assert.equal(canUseOperations('customer'),false);
+ for(const role of ['customer','admin','driver'])assert.equal(allowedWorkspace('driver',role,true,'customer'),'customer');
+ assert.equal(allowedWorkspace('admin','customer',false,'customer'),'customer');
+ assert.equal(allowedWorkspace('support','customer',false,'customer'),'support');
 });
-test('partner access does not imply staff access',()=>{
- assert.equal(allowedWorkspace('driver','driver',false),'driver');assert.equal(allowedWorkspace('admin','driver',true),'driver');
- assert.equal(allowedWorkspace('driver','finance',false),'customer');assert.equal(allowedWorkspace('admin','finance',false),'admin');
- assert.equal(allowedWorkspace('driver','admin',false),'driver');
+test('operations stays staff-only and is not part of the partner portal',()=>{
+ assert.equal(allowedWorkspace('admin','finance',false,'customer'),'admin');assert.equal(allowedWorkspace('admin','driver',true,'customer'),'customer');
+ assert.equal(allowedWorkspace('admin','admin',false,'partner'),'driver');
 });
 test('booking payload never contains a customer-entered fare or one-way package',()=>{
  const form=new FormData();for(const [k,v] of Object.entries({cityId:'hyderabad',pickup:' Madhapur ',destination:'Airport',tripType:'one-way',transmission:'manual',vehicleCategory:'sedan',fare:'1'}))form.set(k,v);
  const input=bookingInput(form);assert.equal(input.pickup,'Madhapur');assert.equal('fare' in input,false);assert.equal('hours' in input,false);assert.equal(input.scheduledAt,null);
 });
 
-test('driver opens partner workspace instead of customer booking',()=>{for(const requested of ['customer','admin','unknown',''])assert.equal(allowedWorkspace(requested,'driver',true),'driver');assert.equal(allowedWorkspace('account','driver',true),'account');});
+test('partner portal shows only partner screens and drivers are sent there',()=>{
+ for(const requested of ['customer','admin','unknown',''])assert.equal(allowedWorkspace(requested,'driver',true,'partner'),'driver');
+ assert.equal(allowedWorkspace('account','driver',true,'partner'),'account');assert.equal(allowedWorkspace('customer','customer',false,'partner'),'driver');
+ assert.equal(homePortal('driver'),'partner');assert.equal(homePortal('customer'),'customer');assert.equal(homePortal('admin'),'customer');
+});

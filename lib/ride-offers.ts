@@ -1,3 +1,4 @@
+import {distance} from './domain.ts';
 export class RideOfferError extends Error{status=409}
 const stmt=(db:any,sql:string,...args:any[])=>db.prepare(sql).bind(...args);
 const one=async(db:any,sql:string,...args:any[])=>stmt(db,sql,...args).first();
@@ -7,6 +8,7 @@ export const offerDuration=10000;
 export async function claimRideOffer(db:any,booking:string,driver:string,offer:string,at=Date.now()){
  const r=await stmt(db,"UPDATE ride_offers SET state='accepted' WHERE booking_id=? AND driver_id=? AND offer_id=? AND state='offered' AND expires_at>?",booking,driver,offer,at).run();
  if(!r.meta.changes)throw new RideOfferError('This offer has expired or moved to another driver. Wait for your next offer.');
+ await stmt(db,"UPDATE ride_offer_events SET outcome='accepted',responded_at=? WHERE offer_id=?",at,offer).run();
 }
 export function rideOffers(db:any,paymentKey?:string,clock=()=>Date.now()){
  const mode=paymentKey?.startsWith('rzp_live_')?'live':'test';
@@ -25,11 +27,19 @@ export function rideOffers(db:any,paymentKey?:string,clock=()=>Date.now()){
    if(!candidates.length)continue;
    // Lexical successor rotates fairly and naturally returns to the first driver.
    const next=candidates.find((d:any)=>d.user_id>(current?.driver_id||''))||candidates[0];
-   await stmt(database,"INSERT INTO ride_offers(booking_id,driver_id,offer_id,offered_at,expires_at,attempt,state) VALUES(?,?,?,?,?,1,'offered') ON CONFLICT(booking_id) DO UPDATE SET driver_id=excluded.driver_id,offer_id=excluded.offer_id,offered_at=excluded.offered_at,expires_at=excluded.expires_at,attempt=ride_offers.attempt+1,state='offered'",booking.id,next.user_id,crypto.randomUUID(),at,at+offerDuration).run();
+   const offerId=crypto.randomUUID();
+   await stmt(database,"INSERT INTO ride_offers(booking_id,driver_id,offer_id,offered_at,expires_at,attempt,state) VALUES(?,?,?,?,?,1,'offered') ON CONFLICT(booking_id) DO UPDATE SET driver_id=excluded.driver_id,offer_id=excluded.offer_id,offered_at=excluded.offered_at,expires_at=excluded.expires_at,attempt=ride_offers.attempt+1,state='offered'",booking.id,next.user_id,offerId,at,at+offerDuration).run();
+   // Keep a history row per offer for acceptance analytics and partner-health flags.
+   await stmt(database,'INSERT INTO ride_offer_events(offer_id,booking_id,driver_id,attempt,offered_at,expires_at) SELECT offer_id,booking_id,driver_id,attempt,offered_at,expires_at FROM ride_offers WHERE booking_id=? ON CONFLICT(offer_id) DO NOTHING',booking.id).run();
   }
-  const offers=await all(database,"SELECT b.id,b.pickup,b.destination,b.trip_type,b.transmission,b.scheduled_at,b.partner_fare,o.offer_id,o.offered_at,o.expires_at,o.attempt FROM ride_offers o JOIN bookings b ON b.id=o.booking_id WHERE o.driver_id=? AND o.state='offered' AND o.expires_at>? AND b.status='requested' ORDER BY o.offered_at LIMIT 1",driverId,at);
+  const offers=(await all(database,"SELECT b.id,b.pickup,b.destination,b.trip_type,b.transmission,b.scheduled_at,b.partner_fare,b.breakdown,b.pickup_lat,b.pickup_lng,o.offer_id,o.offered_at,o.expires_at,o.attempt FROM ride_offers o JOIN bookings b ON b.id=o.booking_id WHERE o.driver_id=? AND o.state='offered' AND o.expires_at>? AND b.status='requested' ORDER BY o.offered_at LIMIT 1",driverId,at)).map((o:any)=>{
+   let info:any={};try{info=JSON.parse(o.breakdown||'{}')}catch{}
+   const located=me.lat!=null&&me.lng!=null&&Number(me.location_at||0)>at-120000;
+   const {breakdown:_omit,...rest}=o;
+   return {...rest,hours:info.hours??null,vehicleCategory:info.vehicleCategory??null,seconds:offerDuration/1000,pickupDistanceKm:located?Math.round(distance(Number(o.pickup_lat),Number(o.pickup_lng),Number(me.lat),Number(me.lng))*10)/10:null};
+  });
   return {offers,serverNow:clock()};
  }))}
- async function pass(driver:string,offer:string){await stmt(db,"UPDATE ride_offers SET state='passed' WHERE driver_id=? AND offer_id=? AND state='offered'",driver,offer).run();return {ok:true}}
+ async function pass(driver:string,offer:string){const r=await stmt(db,"UPDATE ride_offers SET state='passed' WHERE driver_id=? AND offer_id=? AND state='offered'",driver,offer).run();if(r.meta.changes)await stmt(db,"UPDATE ride_offer_events SET outcome='passed',responded_at=? WHERE offer_id=? AND outcome IS NULL",clock(),offer).run();return {ok:true}}
  return {poll,pass};
 }

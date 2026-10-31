@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as web from '../lib/pickup-wheel.ts';
-import * as native from '../mobile/src/pickup-wheel.ts';
+import * as native from '../mobile/drioz-customer/src/pickup-wheel.ts';
 for(const [name,picker] of Object.entries({web,native})){
  test(name+': noon and midnight use IST',()=>{
   const base={date:'2099-05-20',hour:'12',minute:'15',period:'AM'};

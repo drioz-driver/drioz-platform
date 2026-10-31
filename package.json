@@ -17,7 +17,9 @@
     "test:auth": "node --experimental-strip-types --test tests/auth.test.ts",
     "dev:sites": "node scripts/run-framework.mjs dev",
     "build:sites": "node scripts/run-framework.mjs build",
-    "test:postgres": "node --experimental-strip-types --test tests/postgres.test.ts"
+    "test:postgres": "node --experimental-strip-types --test tests/postgres.test.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.ts tests/*.test.mjs",
+    "test:features": "node --experimental-strip-types --test tests/features.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

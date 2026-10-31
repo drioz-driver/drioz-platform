@@ -1,3 +1,4 @@
-export default function Logo({className=''}:{className?:string}){
-  return <svg className={'brand-logo '+className} viewBox="301 809 1438 508" role="img" aria-label="DRIOZ — Your personal driver, anytime" xmlns="http://www.w3.org/2000/svg"><image href="/drioz-logo.png" x="0" y="0" width="2048" height="2012"/></svg>;
+/** DRIOZ wordmark. `tone="light"` swaps the graphite details for use on dark surfaces. */
+export default function Logo({className='',tone='light'}:{className?:string;tone?:'light'|'dark'}){
+ return <img className={'brand-logo '+className} src={tone==='light'?'/drioz-logo-light.png':'/drioz-logo.png'} width={1100} height={378} alt="DRIOZ — Your personal driver, anytime" decoding="async"/>;
 }

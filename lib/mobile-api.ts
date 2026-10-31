@@ -1,5 +1,7 @@
 import { managedIdentity } from "./auth/identity.ts";
 import { operations, ApiError } from "./operations.ts";
+import { runtimeOptions, type DriozRuntime } from "./runtime-options.ts";
+import { databaseOutOfDate } from "./migrations-pending.ts";
 type Runtime = {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
@@ -43,6 +45,8 @@ export function mobilePathAllowed(path: string, method: string) {
     return (
       path === "snapshot" ||
       path === "driver/offers" ||
+      /^bookings\/[^/]+\/inspections$/.test(path) ||
+      /^inspections\/[^/]+\/photos\/\d$/.test(path) ||
       /^bookings\/[^/]+\/(invoice|location)$/.test(path) ||
       /^tickets\/[^/]+$/.test(path) ||
       /^documents\/[^/]+$/.test(path)
@@ -61,7 +65,15 @@ export function mobilePathAllowed(path: string, method: string) {
       "documents",
       "tickets",
       "notifications/read",
+      "places",
+      "push/register",
+      "push/unregister",
+      "account/profile",
+      "account/delete",
+      "driver/plan",
     ].includes(path) ||
+    /^places\/[^/]+\/delete$/.test(path) ||
+    /^bookings\/[^/]+\/(rate|inspection|sos|message|share)$/.test(path) ||
     /^bookings\/[^/]+\/(assign|status|start-code)$/.test(path) ||
     /^tickets\/[^/]+$/.test(path) ||
     /^location-requests\/[^/]+\/cancel$/.test(path)
@@ -109,6 +121,7 @@ export async function handleMobile(
       runtime.TRIP_PIN_SECRET || "",
       runtime.RAZORPAY_KEY_ID,
       true,
+      runtimeOptions(runtime as unknown as DriozRuntime),
     );
     const actor = await ops.actor(identity);
     let data: any = null;
@@ -119,7 +132,7 @@ export async function handleMobile(
       );
       const body = await boundedBody(
         request,
-        multipart ? 6 * 1024 * 1024 : 20000,
+        multipart ? (path.endsWith("/inspection") ? 4_400_000 : 6 * 1024 * 1024) : 20000,
       );
       if (multipart)
         request = new Request(request.url, {
@@ -143,6 +156,17 @@ export async function handleMobile(
     }
     return Response.json(result, { headers });
   } catch (error) {
+    if (!(error instanceof ApiError))
+      console.error(
+        "mobile request failed",
+        path,
+        error instanceof Error ? error.message : "Unknown error",
+      );
+    if (!(error instanceof ApiError) && databaseOutOfDate(error))
+      return Response.json(
+        { message: "The DRIOZ server database is out of date. Ask your administrator to apply the latest migrations.", code: "migrations_pending" },
+        { status: 503, headers },
+      );
     if (error instanceof ApiError)
       return Response.json(
         { message: error.message },

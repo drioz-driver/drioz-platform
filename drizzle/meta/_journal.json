@@ -22,6 +22,20 @@
       "when": 1792415159281,
       "tag": "0002_normal_northstar",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793350000000,
+      "tag": "0003_performance_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793350000001,
+      "tag": "0004_v5_features",
+      "breakpoints": true
     }
   ]
 }

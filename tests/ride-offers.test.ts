@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {schemaSql} from './pg-schema.ts';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
@@ -6,7 +7,7 @@ import {databaseAdapter} from '../lib/postgres.ts';
 import {rideOffers,claimRideOffer} from '../lib/ride-offers.ts';
 import {operations} from '../lib/operations.ts';
 async function setup(){
- const pg=new PGlite();await pg.exec('BEGIN;'+readFileSync(new URL('../db/postgres-staging.sql',import.meta.url),'utf8')+';CREATE ROLE anon;CREATE ROLE authenticated;'+['20261021025159_razorpay_wallet.sql','20261021035305_driver_wallet.sql','20261021144941_driver_timed_offers.sql'].map(n=>readFileSync(new URL('../supabase/migrations/'+n,import.meta.url),'utf8')).join(';')+';COMMIT;SET search_path=drioz_staging;');
+ const pg=new PGlite();await pg.exec(schemaSql());
  const run=async(sql:string,args:any[])=>{const r=await pg.query(sql,args);return {rows:r.rows,rowCount:r.affectedRows??r.rows.length}};
  const db=databaseAdapter(run,work=>pg.transaction(async tx=>work(async(sql,args)=>{const r=await tx.query(sql,args);return {rows:r.rows,rowCount:r.affectedRows??r.rows.length}})));
  let at=Date.now();

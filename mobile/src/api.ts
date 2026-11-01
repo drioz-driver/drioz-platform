@@ -22,7 +22,9 @@ export async function api(
   let { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) throw new APIError("Sign in to continue", 401);
   const multipart = data instanceof FormData;
-  const response = await fetch(apiOrigin + (path.startsWith("billing/") ? "/api/"+path.slice(8) : "/api/mobile/"+path), {
+  let response: Response;
+  try {
+    response = await fetch(apiOrigin + (path.startsWith("billing/") ? "/api/"+path.slice(8) : "/api/mobile/"+path), {
     method: data === undefined ? "GET" : "POST",
     headers: {
       Authorization: "Bearer " + sessionData.session.access_token,
@@ -33,13 +35,20 @@ export async function api(
       : { body: multipart ? (data as FormData) : JSON.stringify(data) }),
     // Mobile multipart uploads can take longer on slower cellular networks.
     signal: AbortSignal.timeout(multipart ? 60000 : 20000),
-  });
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
+      throw new APIError(multipart ? "Document upload timed out. Check your connection and retry." : "Request timed out. Please retry.", 408);
+    throw error;
+  }
   if (response.status === 401 && retry) {
     if(!refreshing)refreshing=supabase.auth.refreshSession().finally(()=>{refreshing=null});
     const refreshed=await refreshing;
     if(!refreshed.error)return api(path,data,false);
     if(refreshed.error.status===undefined||refreshed.error.status>=500||refreshed.error.status===429)throw new APIError("Could not reconnect. Check your connection and retry.",503);
   }
+  if (response.status === 413)
+    throw new APIError("Document is too large for the server. Choose a smaller PDF or photo.", 413);
   if (
     !(response.headers.get("content-type") || "").includes("application/json")
   )

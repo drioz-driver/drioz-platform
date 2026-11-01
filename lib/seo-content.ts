@@ -405,5 +405,99 @@ export const seoPages:SeoPage[]=[
         "Use DRIOZ Partner registration, select the city and provide the required information for review."
       ]
     ]
+  },
+  {
+    "section": "guides",
+    "slug": "airport-driver-checklist",
+    "title": "Airport Driver Booking Checklist for Your Own Car",
+    "description": "Plan an airport journey with a driver for your own car: vehicle location, terminal details, pickup meeting point, luggage, parking and return arrangements.",
+    "intro": "Booking a personal driver for an airport journey starts with one practical question: where will your own car be? Use this checklist before requesting a driver, especially when arranging a pickup for someone else.",
+    "blocks": [
+      [
+        "1. Decide where the car starts and finishes",
+        "For an airport drop, have your car ready at the pickup address. For an airport arrival, arrange who brings the car to the airport before requesting a driver. A driver-only booking does not supply a cab. Decide who keeps the car after the journey and where it can be parked."
+      ],
+      [
+        "2. Enter the terminal and a usable meeting point",
+        "Select a precise address suggestion and keep the terminal, entrance and meeting instructions ready. For Hyderabad airport travel, confirm the intended pickup at Rajiv Gandhi International Airport with the assigned driver. Follow the airport's current pickup and parking instructions; do not assume a driver can wait at every entrance."
+      ],
+      [
+        "3. Plan around arrival changes and traffic",
+        "For arrivals, consider immigration, baggage collection and the time needed to reach the meeting point. For departures, plan your required arrival time with your airline and allow for road traffic. DRIOZ does not publish a guaranteed travel time on this page. If your flight or plan changes, use support to discuss the booking."
+      ],
+      [
+        "4. Check vehicle and passenger details",
+        "Choose the correct transmission and car category. Have enough room for passengers and luggage, fuel the vehicle and prepare the keys. If another family member will meet the driver, ensure they have the agreed instructions and access to the car."
+      ],
+      [
+        "5. Separate the fare from other expenses",
+        "Review the actual driver estimate before requesting. Budget separately for fuel, tolls and parking unless the displayed breakdown explicitly includes them. Choose one way for a drop that finishes at the airport, or review round-trip options when waiting and a return are required."
+      ],
+      [
+        "6. Confirm acceptance before relying on the journey",
+        "Submitting a request is not the same as receiving an assigned driver. Check the booking status and keep a suitable alternative arrangement for time-sensitive travel until your request is accepted."
+      ]
+    ],
+    "faqs": [
+      [
+        "Does an airport driver booking include a car?",
+        "No. DRIOZ's personal-driver service is for your own car. Arrange for the car to be available at the pickup."
+      ],
+      [
+        "Can I book for an arriving family member?",
+        "Plan who supplies the car, who meets the driver and the exact meeting point. Review the live booking options and acceptance status before relying on the arrangement."
+      ],
+      [
+        "Is airport parking included?",
+        "Review the actual fare breakdown. Do not assume parking, tolls or fuel are included in the driver estimate."
+      ]
+    ]
+  },
+  {
+    "section": "guides",
+    "slug": "before-your-driver-arrives",
+    "title": "Before Your Personal Driver Arrives: Car Owner Checklist",
+    "description": "Prepare your car, pickup instructions and trip plan before a personal driver arrives. A practical checklist for one-way, round-trip and outstation bookings.",
+    "intro": "A clear handover helps your personal-driver booking start smoothly. This checklist is for car owners preparing a vehicle and meeting an assigned driver; it complements the information shown in your booking.",
+    "blocks": [
+      [
+        "Prepare the vehicle and keys",
+        "Make sure the car is at the agreed pickup, accessible and ready to drive. Check fuel or charge, tyres and any warning lights. Keep the keys available and tell the driver about relevant controls or existing vehicle issues. If you have concerns about roadworthiness, resolve them before the trip."
+      ],
+      [
+        "Make the meeting point specific",
+        "An apartment or office campus name may cover several gates and parking areas. Share the building entrance, gate and visitor-access instructions through the booking's available contact or support options. Arrange access if the car is in restricted parking."
+      ],
+      [
+        "Review who and what is travelling",
+        "Allow space for passengers and luggage and prepare any appropriate passenger equipment. Secure your belongings and remove items you do not need to leave in the vehicle. If booking for someone else, agree who will meet the driver and hand over the keys."
+      ],
+      [
+        "Match the driver to your actual booking",
+        "Check the assignment details shown in your account before handing over the car. If the person or trip information does not match, pause and contact DRIOZ support. Keep access to your booking information during the journey."
+      ],
+      [
+        "Agree on the complete trip plan",
+        "Discuss the destination and any planned stops or waiting. One way finishes at the drop; a round trip includes a return arrangement. For outstation travel, review the longer itinerary and rest arrangements in advance. Use support for changes that affect the booking rather than assuming extra work is included."
+      ],
+      [
+        "Review the fare and finish arrangements",
+        "Read the displayed estimate and applicable extra charges before starting. Plan separate fuel, toll and parking expenses. At the end, confirm where the car and keys should be handed back, check the trip status and use the account support options for any discrepancy."
+      ]
+    ],
+    "faqs": [
+      [
+        "Should I select manual or automatic?",
+        "Select the actual transmission of the vehicle the driver will use, along with its correct car category."
+      ],
+      [
+        "Can I change the route after booking?",
+        "Contact support about changes and review any effect on the booking or fare. Do not assume a changed route or extra waiting is included."
+      ],
+      [
+        "What if the assigned details do not match?",
+        "Pause the handover and contact DRIOZ support using your account or info@drioz.com."
+      ]
+    ]
   }
 ];

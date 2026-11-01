@@ -22,6 +22,7 @@ try { base = new URL(raw); } catch { console.error("Invalid URL."); process.exit
 const hostname = base.hostname.toLowerCase();
 if (base.protocol !== "https:" || hostname === "drioz.com" || hostname === "www.drioz.com" ||
     hostname.endsWith(".drioz.com") || hostname === "localhost" || hostname === "127.0.0.1" ||
+    !/(staging|preview)/i.test(hostname) || base.username || base.password ||
     /(^|[.-])prod(uction)?([.-]|$)/i.test(hostname)) {
   console.error("Refusing production/local/non-HTTPS target:", hostname);
   process.exit(2);

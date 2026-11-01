@@ -225,9 +225,10 @@ export default function OfferPopup({
                   accessibilityLabel="Reject this ride"
                   disabled={phase !== "offer"}
                   onPress={decline}
-                  style={({ pressed }) => ({ height: 62, paddingHorizontal: 20, borderRadius: 18, backgroundColor: colors.night3, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.8 : 1 })}
+                  style={({ pressed }) => ({ height: 62, paddingHorizontal: 18, borderRadius: 18, backgroundColor: colors.night3, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.8 : 1 })}
                 >
-                  <Icon name="close" size={24} color="#CFE0D9" />
+                  <Icon name="close" size={22} color="#CFE0D9" />
+                  <Text style={{ color: "#CFE0D9", fontSize: 15, fontWeight: "800" }}>{t("offer.reject")}</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"

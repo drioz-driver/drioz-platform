@@ -41,7 +41,7 @@ export default function OfferPopup({offer,skew,onAccept,onDecline,onMissed,onDon
     <div className="offer-chips">{chips.map(c=><span key={c}>{c}</span>)}</div>
     <div className="offer-route"><div><small>Pickup</small><p>{offer.pickup}</p></div><div><small>{offer.tripType==='return'?'Return to':'Destination'}</small><p>{offer.destination}</p></div></div>
     {error&&<p className="offer-error" role="alert">{error}</p>}
-    {phase!=='won'&&<div className="offer-actions"><button className="pass" aria-label="Pass this ride" disabled={phase!=='offer'} onClick={decline}><X size={22}/></button><button className="take" disabled={phase!=='offer'} onClick={accept}><SteeringWheel size={26} color="#04140e" rim="#04140e" hub="var(--brand)" className={phase==='accepting'?'spin':''}/>{phase==='accepting'?'Securing ride…':phase==='missed'?(error?'Not available':'Missed'):'Accept ride'}</button></div>}
+    {phase!=='won'&&<div className="offer-actions"><button className="pass" aria-label="Reject ride" disabled={phase!=='offer'} onClick={decline}><X size={20}/><span>Reject</span></button><button className="take" disabled={phase!=='offer'} onClick={accept}><SteeringWheel size={26} color="#04140e" rim="#04140e" hub="var(--brand)" className={phase==='accepting'?'spin':''}/>{phase==='accepting'?'Securing ride…':phase==='missed'?(error?'Not available':'Missed'):'Accept ride'}</button></div>}
    </div>
   </section>
  </div>;

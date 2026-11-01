@@ -13,6 +13,7 @@ export class HttpError extends Error{constructor(message:string,public status:nu
 export async function api(path:string,data?:unknown){
  const isForm=typeof FormData!=='undefined'&&data instanceof FormData;
  const r=await sessionFetch('/api/ops/'+path,{method:data===undefined?'GET':'POST',headers:isForm||data===undefined?undefined:{'Content-Type':'application/json'},body:data===undefined?undefined:isForm?data as FormData:JSON.stringify(data),cache:'no-store'});
+ if(r.status===413)throw new HttpError('The upload is too large. Choose a PDF, JPEG or PNG under 4 MB.',413);
  let result:any={};try{result=await r.json()}catch{result={message:r.ok?'':'The server returned an unexpected response.'}}
  if(!r.ok){if(r.status===401&&typeof window!=='undefined')window.dispatchEvent(new Event('drioz-session-expired'));throw new HttpError(result.message||'Request failed',r.status)}
  return result;

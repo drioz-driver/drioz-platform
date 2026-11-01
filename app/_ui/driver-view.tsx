@@ -66,9 +66,9 @@ export default function DriverView({data,me,section,setSection,t,gps,position,sh
      <div className="fields"><Field title="Driving licence number"><input name="licence" defaultValue={driver?.licence||''} minLength={5} maxLength={40} required/></Field><Field title="Licence valid until"><input type="date" name="licenceExpiry" min={new Date().toISOString().slice(0,10)} defaultValue={driver?.licence_expiry||''} required/></Field></div>
     </Form>
    </section>
-   <section className="panel"><h2>Verification documents</h2><p>PDF, JPEG or PNG up to 5 MB. Files are private and only visible to you and authorised operations staff.</p>
+   <section className="panel"><h2>Verification documents</h2><p>PDF, JPEG or PNG up to 4 MB. Files are private and only visible to you and authorised operations staff.</p>
     <div className="list" style={{marginBottom:18}}>{docKinds.map(([k,name])=>{const st=docState(k);return <div className="list-item" key={k}><span className={'tile-icon'+(st==='approved'?' brand':'')}><FileCheck size={18}/></span><div className="grow"><strong>{name}</strong><small>{st==='missing'?'Not uploaded yet':st==='approved'?'Verified':st==='pending'?'Awaiting review':'Rejected — upload again'}</small></div><Badge value={st==='missing'?'required':st}/></div>})}</div>
-    <Form button={<><Upload size={16}/>Upload securely</>} reset onSubmit={f=>base.act('documents',f)}>
+    <Form button={<><Upload size={16}/>Upload securely</>} reset onSubmit={f=>{const file=f.get('file');if(!(file instanceof File)||!file.size)throw Error('Choose a readable PDF, JPEG or PNG.');if(file.size>4*1024*1024)throw Error('Maximum file size is 4 MB. Compress the file or scan at a lower resolution and retry.');return base.act('documents',f)}}>
      <Field title="Document type"><select name="kind">{docKinds.map(([k,n])=><option key={k} value={k}>{n}</option>)}</select></Field>
      <Field title="File"><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required/></Field>
     </Form>

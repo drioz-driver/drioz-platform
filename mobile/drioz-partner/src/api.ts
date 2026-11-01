@@ -49,6 +49,7 @@ export async function api(
   } finally {
     clearTimeout(timer);
   }
+  if (response.status === 413) throw new APIError("The upload is too large. Choose a PDF, JPEG or PNG under 4 MB.", 413);
   if (response.status === 401 && retry) {
     if (!refreshing) refreshing = supabase.auth.refreshSession().finally(() => { refreshing = null; });
     const refreshed = await refreshing;

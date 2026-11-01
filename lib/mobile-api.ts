@@ -132,7 +132,7 @@ export async function handleMobile(
       );
       const body = await boundedBody(
         request,
-        multipart ? (path.endsWith("/inspection") ? 4_400_000 : 6 * 1024 * 1024) : 20000,
+        multipart ? 4_400_000 : 20000,
       );
       if (multipart)
         request = new Request(request.url, {

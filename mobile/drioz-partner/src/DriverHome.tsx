@@ -3,6 +3,7 @@ import { Text, Alert, View, Switch, Pressable } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as DocumentPicker from "expo-document-picker";
 import { api, money } from "./api";
+import { documentUploadDetails } from "./document-upload";
 import { startTracking, stopTracking, trackingActive } from "./location";
 import { Card, Button, Field, Choices, Badge, Banner, Empty, Icon, SectionTitle, colors, errorText, s, tap } from "./ui";
 import { SearchingWheel, SteeringStrip } from "./Steering";
@@ -75,11 +76,13 @@ export default function DriverScreen({ data, refresh, onWallet }: { data: any; r
     run(async () => {
       const result = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/jpeg", "image/png"], copyToCacheDirectory: true, multiple: false });
       if (result.canceled) return;
-      const file = result.assets[0];
-      if (file.size && file.size > 5 * 1024 * 1024) throw Error("Maximum file size is 5 MB");
+      const file = result.assets?.[0];
+      if (!file) throw Error("No file was selected. Please choose it again.");
+      const details = documentUploadDetails(file);
       const form = new FormData();
       form.append("kind", kind);
-      form.append("file", { uri: file.uri, name: file.name, type: file.mimeType || "application/octet-stream" } as any);
+      if (file.file) form.append("file", file.file);
+      else form.append("file", { uri: file.uri, ...details } as any);
       await api("documents", form);
       return { message: t("docs.uploaded", { name: label }) };
     });

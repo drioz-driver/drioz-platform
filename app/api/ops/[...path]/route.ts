@@ -26,7 +26,7 @@ async function route(request:Request,context:{params:Promise<{path:string[]}>}){
    await ops.limit(actor);
    const contentType=request.headers.get('content-type')||'';
    // Vercel functions accept ~4.5 MB request bodies; apps compress inspection photos before upload.
-   const maximum=contentType.startsWith('multipart/form-data')?(path.endsWith('/inspection')?4400000:6*1024*1024):20000;
+   const maximum=contentType.startsWith('multipart/form-data')?4400000:20000;
    if(Number(request.headers.get('content-length')||0)>maximum)throw new ApiError(413,'Request too large');
    if(contentType.startsWith('multipart/form-data')){const reader=request.body?.getReader();let length=0;const chunks:Uint8Array[]=[];if(reader){while(true){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>maximum){await reader.cancel();throw new ApiError(413,'Request too large')}chunks.push(value)}}request=new Request(request.url,{method:'POST',headers:request.headers,body:new Blob(chunks as BlobPart[])});
    }else{const text=await request.text();if(text.length>maximum)throw new ApiError(413,'Request too large');try{data=JSON.parse(text)}catch{throw new ApiError(400,'Invalid JSON')}}

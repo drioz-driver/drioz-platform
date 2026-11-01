@@ -225,8 +225,10 @@ export default function DriverScreen({
                       });
                       if (result.canceled) return;
                       const file = result.assets[0];
-                      if (file.size && file.size > 5 * 1024 * 1024)
-                        throw Error("Maximum file size is 5 MB");
+                      // Leave room for multipart encoding and the hosting request limit.
+                      // The server-side private-storage adapter accepts up to 4 MiB.
+                      if (file.size && file.size > 3.5 * 1024 * 1024)
+                        throw Error("Maximum upload size is 3.5 MB. Please select a smaller PDF or photo.");
                       const form = new FormData();
                       form.append("kind", kind);
                       form.append("file", {

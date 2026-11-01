@@ -31,7 +31,8 @@ export async function api(
     ...(data === undefined
       ? {}
       : { body: multipart ? (data as FormData) : JSON.stringify(data) }),
-    signal: AbortSignal.timeout(20000),
+    // Mobile multipart uploads can take longer on slower cellular networks.
+    signal: AbortSignal.timeout(multipart ? 60000 : 20000),
   });
   if (response.status === 401 && retry) {
     if(!refreshing)refreshing=supabase.auth.refreshSession().finally(()=>{refreshing=null});

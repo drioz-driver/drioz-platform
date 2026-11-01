@@ -11,6 +11,22 @@ type Runtime = {
   TRIP_PIN_SECRET?: string;
   RAZORPAY_KEY_ID?: string;
 };
+// Warm server instances remember a verified access token briefly, so polling and pricing calls
+// skip a round trip to Supabase Auth. Suspension is still enforced on every request by ops.actor().
+const IDENTITY_TTL_MS = 60_000;
+const verified = new Map<string, { identity: any; until: number }>();
+async function tokenKey(token: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function tokenExpiry(token: string) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    return typeof payload.exp === "number" ? payload.exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
 export async function mobileIdentity(
   request: Request,
   runtime: Runtime,
@@ -21,12 +37,28 @@ export async function mobileIdentity(
   if (!match) throw new ApiError(401, "Sign in to DRIOZ");
   if (!runtime.SUPABASE_URL || !runtime.SUPABASE_PUBLISHABLE_KEY)
     throw new ApiError(503, "Authentication is not configured");
+  const key = fetcher === fetch ? await tokenKey(match[1]) : "";
+  const cached = key ? verified.get(key) : undefined;
+  if (cached && cached.until > Date.now()) return cached.identity;
+  const identity = await verifyIdentity(match[1], runtime, fetcher);
+  const until = Math.min(Date.now() + IDENTITY_TTL_MS, tokenExpiry(match[1]));
+  if (key && until > Date.now()) {
+    if (verified.size >= 5000) verified.delete(verified.keys().next().value as string);
+    verified.set(key, { identity, until });
+  }
+  return identity;
+}
+async function verifyIdentity(
+  token: string,
+  runtime: Runtime,
+  fetcher: typeof fetch,
+) {
   const response = await fetcher(
-    runtime.SUPABASE_URL.replace(/\/$/, "") + "/auth/v1/user",
+    runtime.SUPABASE_URL!.replace(/\/$/, "") + "/auth/v1/user",
     {
       headers: {
-        apikey: runtime.SUPABASE_PUBLISHABLE_KEY,
-        Authorization: "Bearer " + match[1],
+        apikey: runtime.SUPABASE_PUBLISHABLE_KEY!,
+        Authorization: "Bearer " + token,
       },
       signal: AbortSignal.timeout(8000),
     },
@@ -44,6 +76,7 @@ export function mobilePathAllowed(path: string, method: string) {
   if (method === "GET")
     return (
       path === "snapshot" ||
+      path === "pulse" ||
       path === "driver/offers" ||
       /^bookings\/[^/]+\/inspections$/.test(path) ||
       /^inspections\/[^/]+\/photos\/\d$/.test(path) ||
@@ -56,6 +89,7 @@ export function mobilePathAllowed(path: string, method: string) {
     [
       "coverage",
       "estimate",
+      "price",
       "quote",
       "bookings",
       "driver/apply",
@@ -148,7 +182,13 @@ export async function handleMobile(
         }
       }
     }
-    const result = await ops.handle(actor, path, request.method, data, request);
+    // The dashboard snapshot reads ~25 tables: run it on one connection with one consistent view.
+    const result =
+      path === "snapshot" && request.method === "GET" && runtime.DB.readSnapshot
+        ? await runtime.DB.readSnapshot((db: any) =>
+            operations(db, runtime.BUCKET, runtime.DRIOZ_OWNER_EMAIL || "", runtime.TRIP_PIN_SECRET || "", runtime.RAZORPAY_KEY_ID, true,
+              runtimeOptions(runtime as unknown as DriozRuntime)).handle(actor, path, request.method, data, request))
+        : await ops.handle(actor, path, request.method, data, request);
     if (result instanceof Response) {
       const h = new Headers(result.headers);
       Object.entries(headers).forEach(([k, v]) => h.set(k, v));

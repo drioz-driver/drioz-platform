@@ -1,5 +1,5 @@
 export const siteUrl='https://www.drioz.com';
-export type SeoPage={section:string;slug:string;title:string;description:string;intro:string;blocks:string[][];faqs:string[][];audience?:'partner'};
+export type SeoPage={section:string;slug:string;title:string;description:string;intro:string;blocks:string[][];faqs:string[][];audience?:'partner';indexable?:boolean};
 export const seoPages:SeoPage[]=[
   {
     "section": "drivers",
@@ -278,5 +278,132 @@ export const seoPages:SeoPage[]=[
       ]
     ],
     "audience": "partner"
+  },
+  {
+    "section": "drivers",
+    "slug": "madhapur-hitech-city",
+    "title": "Drivers in Madhapur and HITEC City, Hyderabad",
+    "description": "Plan a personal driver booking around Madhapur, HITEC City and nearby Hyderabad office districts. Get pickup, parking and trip-type guidance before requesting.",
+    "intro": "Need a driver for your own car around Madhapur or HITEC City? Start with the exact pickup and the kind of journey you need. DRIOZ supports requests for one-way, round-trip and scheduled outstation travel, subject to approved-driver availability.",
+    "blocks": [
+      [
+        "Office-campus pickups need a meeting point",
+        "For an office pickup, use the actual building entrance rather than only the campus name. Keep the gate, tower and visitor-access instructions ready for the assigned driver. If the car is in a basement or a restricted parking area, agree on a practical meeting point before the driver arrives."
+      ],
+      [
+        "Madhapur to Financial District: drop or return?",
+        "A drop at a meeting is a one-way use case if the driver can finish there. If you need the driver to wait and bring you back, plan a round trip and include the meeting time in the duration. A short distance does not mean a short booking when waiting is involved."
+      ],
+      [
+        "HITEC City outings and airport travel",
+        "For an evening outing, decide where your car needs to end the journey before choosing the trip type. For a journey to Rajiv Gandhi International Airport, enter the terminal or meeting point clearly, allow for road traffic and keep toll and parking costs separate from the driver estimate. DRIOZ provides the driver, not a vehicle."
+      ],
+      [
+        "Choose a precise map suggestion",
+        "Madhapur and HITEC City place names can appear in several address suggestions. Pick the entry that matches your building and check the location shown. If you are arranging the trip for a family member or colleague, make sure they can meet the assigned driver at that pickup."
+      ],
+      [
+        "Availability and pricing",
+        "Area names on this page describe trip planning rather than guaranteed coverage at every gate or time. The booking form checks your pickup and displays the current estimate. A request is confirmed only when a driver accepts; this page promises neither a fixed arrival time nor a fixed local price."
+      ]
+    ],
+    "faqs": [
+      [
+        "Can I request a driver near Cyber Towers?",
+        "Use the exact pickup address and a clear meeting point. Availability depends on approved partners and the requested time."
+      ],
+      [
+        "Is a car included?",
+        "No. The driver drives your car, so have the vehicle ready at the pickup point."
+      ],
+      [
+        "Can I arrange a driver after work?",
+        "Choose your intended time in the booking flow and review the current estimate. Do not treat the request as confirmed until a driver accepts."
+      ]
+    ]
+  },
+  {
+    "section": "drivers",
+    "slug": "bangalore",
+    "title": "DRIOZ in Bengaluru (Bangalore): Availability and Trip Planning",
+    "description": "Check DRIOZ's Bengaluru launch status and plan driver-only travel in your own car. Information for customers and prospective driver partners.",
+    "intro": "Bengaluru, also commonly searched as Bangalore, is configured in DRIOZ. At our 1 November 2026 operations check, there were no approved driver partners registered for the city. Immediate service is therefore not being advertised here.",
+    "indexable": false,
+    "blocks": [
+      [
+        "Check the city before planning around a booking",
+        "A city appearing in a selector is not the same as an active driver being available. Use the live booking form for the current status, and do not rely on DRIOZ for a time-sensitive departure until your request is accepted. This page is a planning and launch-status guide, not a promise of coverage."
+      ],
+      [
+        "Plan office travel around the full outing",
+        "A journey between an office district and home can involve more than the time spent driving. Decide whether you need only a drop or a driver who stays through appointments and brings you back. For pickup from an office park, prepare building, gate and parking instructions."
+      ],
+      [
+        "Airport journeys require the car to be in the right place",
+        "A driver-only service does not bring a cab to the terminal. For travel to or from Kempegowda International Airport, work out who brings your own car to the pickup, how you will meet, where it can wait and who pays parking and tolls. Allow time for traffic and the pickup process."
+      ],
+      [
+        "Interested in becoming a Bengaluru partner?",
+        "Use DRIOZ Partner registration to submit the city and required licence and profile details. Application review and approval are required before driving. Registration does not guarantee work, earnings or a city launch date."
+      ]
+    ],
+    "faqs": [
+      [
+        "Can I book a Bengaluru driver now?",
+        "Do not assume availability. Our last operations check found no approved city partners. Check the live booking flow for changes."
+      ],
+      [
+        "Is Bangalore different from Bengaluru in DRIOZ?",
+        "They refer to the same city. The configured city name in DRIOZ is Bengaluru."
+      ],
+      [
+        "Can I apply to drive in Bengaluru?",
+        "Use the partner registration portal and select the appropriate city. The application is subject to review."
+      ]
+    ]
+  },
+  {
+    "section": "drivers",
+    "slug": "delhi",
+    "title": "DRIOZ in Delhi NCR: Availability and Driver Booking Guide",
+    "description": "Read DRIOZ's Delhi NCR launch status and practical guidance for driver-only journeys, cross-city travel and partner registration.",
+    "intro": "Delhi NCR is configured in DRIOZ, but our 1 November 2026 operations check found no approved driver partners registered for the city. This guide does not advertise immediate availability or guaranteed coverage across NCR.",
+    "indexable": false,
+    "blocks": [
+      [
+        "NCR is a region, so use a complete address",
+        "A general destination such as Delhi or NCR is not enough to describe a pickup. Be clear about the locality, building, meeting point and whether the journey crosses into another city. Check that the map suggestion reflects your actual address before relying on an estimate."
+      ],
+      [
+        "Separate a local drop from a longer itinerary",
+        "A single drop, an outing with waiting and return, and a journey beyond the city involve different driver requirements. Enter the whole plan and select the appropriate trip type. Do not assume a local booking covers an extended multi-stop or intercity itinerary."
+      ],
+      [
+        "Terminal pickups need a vehicle plan",
+        "For an airport or railway pickup, remember that DRIOZ's advertised service is a driver for your own car. Agree on how the vehicle reaches the pickup, the correct terminal or station exit, and a legal meeting and parking arrangement. Check separate toll, parking and permit costs."
+      ],
+      [
+        "Vehicle readiness and local restrictions",
+        "Keep your own car's documents and condition suitable for the intended route. Check current official traffic, vehicle and access restrictions before travel, rather than relying on a booking page as legal guidance. A driver request does not override those restrictions."
+      ],
+      [
+        "Partner registration and current launch status",
+        "Prospective Delhi NCR driver partners can begin registration through the official DRIOZ portal. Required documents and the application must be reviewed and approved. No salary, minimum booking volume or launch date is promised. Customers should confirm live availability before arranging travel around DRIOZ."
+      ]
+    ],
+    "faqs": [
+      [
+        "Does DRIOZ guarantee a driver in Delhi NCR?",
+        "No. Our latest operations check found no approved city partners. Check the live booking flow before planning a journey."
+      ],
+      [
+        "Can I use a driver for my own car?",
+        "That is the service DRIOZ is designed for; a vehicle is not included."
+      ],
+      [
+        "How can Delhi NCR drivers apply?",
+        "Use DRIOZ Partner registration, select the city and provide the required information for review."
+      ]
+    ]
   }
 ];

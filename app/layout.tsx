@@ -3,6 +3,9 @@ import './globals.css';
 export const metadata:Metadata={
  title:{default:'DRIOZ — Your personal driver, anytime',template:'%s · DRIOZ'},
  description:'Book a vetted personal driver for your own car — one way, round trip or outstation. Transparent fares, verified partners and live trip status.',
+ metadataBase:new URL('https://www.drioz.com'),
+ verification:{google:'FoDBik6jePUWAUkMS5VgmKa0BqKj9rtsMqnLYPvyPnw'},
+ robots:{index:process.env.VERCEL_ENV!=='preview',follow:true},
  manifest:'/manifest.webmanifest',
  icons:{icon:'/favicon.svg',apple:'/icon-512.png'},
  applicationName:'DRIOZ',

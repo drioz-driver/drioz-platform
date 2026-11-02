@@ -1,0 +1,13 @@
+node_modules/
+.expo/
+dist/
+dist-review/
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.pem
+*.key
+*.mobileprovision
+credentials.json

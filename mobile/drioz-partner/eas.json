@@ -1,1 +1,48 @@
-{"cli":{"version":">=16.0.0","appVersionSource":"remote"},"build":{"development":{"developmentClient":true,"distribution":"internal"},"preview":{"distribution":"internal","android":{"buildType":"apk"}},"production":{"autoIncrement":true,"android":{"buildType":"app-bundle"}}},"submit":{"production":{}}}
+{
+  "cli": {
+    "version": ">=16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.drioz.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://pckgsgpxoqyvqqiqayon.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_EtQft6bQBE5cNkdcppUcyg_jTXBaFDa"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.drioz.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://pckgsgpxoqyvqqiqayon.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_EtQft6bQBE5cNkdcppUcyg_jTXBaFDa"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.drioz.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://pckgsgpxoqyvqqiqayon.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_EtQft6bQBE5cNkdcppUcyg_jTXBaFDa"
+      }
+    },
+    "ios-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -41,6 +41,10 @@ Add both redirect URLs in Supabase → Authentication → URL Configuration: `dr
 
 ## Build and publish
 
+### Mumbai migration
+
+The EAS development, preview and production profiles now explicitly use the Mumbai Supabase project. These are public client settings; no server API key is bundled. Both installed apps need a new native build because their Supabase URL is embedded in the JavaScript bundle. Keep the website on Sydney until the new builds are ready for the coordinated cutover. Distribute the Mumbai builds after the website backend is switched, and have users sign in again.
+
 Run inside each app folder — each is its own EAS project and its own store listing:
 
 ```sh

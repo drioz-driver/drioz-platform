@@ -1110,9 +1110,12 @@ form.inline-form .form-message{flex-basis:100%;margin:0}
 .address-current{display:inline-flex;align-items:center;gap:6px;width:auto;min-height:34px;margin:-6px 0 16px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--brand-deep);font-size:13px;font-weight:600;line-height:1.2}
 .address-current:hover:not(:disabled){border-color:var(--brand-strong)}
 /* "Plan your journey": same heading weight as the rest of the page, readable body text. */
-.guest-booking .customer-journeys{padding:28px 20px 12px}
-.guest-booking .customer-journeys h2{font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin:8px 0 10px;text-wrap:balance}
-.guest-booking .customer-journeys p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 8px;max-width:60ch}
+@media(max-width:800px){
+ .guest-booking .customer-journeys{padding:28px 20px 12px}
+ .guest-booking .customer-journeys h2{font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin:8px 0 10px;text-wrap:balance}
+ .guest-booking .customer-journeys p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 8px;max-width:60ch}
+}
+.guest-booking .customer-journeys h2{font-weight:700}
 /* Signed-in hero: three compact stats in one row on phones. */
 @media(max-width:600px){
  .hero-proof{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px;padding-top:20px}
@@ -1125,9 +1128,18 @@ form.inline-form .form-message{flex-basis:100%;margin:0}
 .trip-route strong,.customer-site .trip-route strong{font-size:15px;font-weight:600;line-height:1.45}
 .trip .actions,.trip-card .actions{gap:8px;row-gap:8px}
 /* Home page: the bottom-nav allowance belongs at the very end, not between the form and the guide. */
-@media(max-width:800px){
- .guest-home:has(+section){min-height:0;padding-bottom:0}
- .guest-home+section{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+/* Home page: the guide and site footer follow the booking area; the old one-line footer is replaced. */
+.guest-home:has(+section)>footer{display:none}
+@media(max-width:800px){.guest-home:has(+section){min-height:0;padding-bottom:0}}
+.guest-home:has(+section) .customer-journeys{margin-bottom:0}
+/* Desktop header: two matched, quiet buttons instead of a pill tray. */
+@media(min-width:801px){
+ .guest-booking>.site-header nav{gap:10px;padding:0;background:none;border:0;border-radius:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+ .guest-booking>.site-header nav a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:10px;font-size:14px;font-weight:600;letter-spacing:0;line-height:1;text-decoration:none;box-shadow:none!important;transition:background-color .15s,border-color .15s,color .15s}
+ .guest-booking>.site-header nav a.button{background:rgba(7,17,14,.58)!important;color:#fff!important;border:1px solid rgba(255,255,255,.34)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+ .guest-booking>.site-header nav a.button:hover{background:rgba(7,17,14,.78)!important;border-color:rgba(255,255,255,.6)!important}
+ .guest-booking>.site-header nav a.primary{background:var(--brand)!important;color:#04140e!important;border:1px solid var(--brand)!important}
+ .guest-booking>.site-header nav a.primary:hover{background:var(--brand-strong)!important;border-color:var(--brand-strong)!important}
 }
 .filter-bar[role=group]{gap:8px;align-items:center}.filter-bar button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .two-col>*,.trip-grid>*,.stack>*{min-width:0}.on-road{overflow:hidden;max-width:100%}.panel .steps.offer-steps li,.steps.offer-steps li{color:var(--ink-2);background:var(--surface);border:1px solid var(--line)}

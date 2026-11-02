@@ -7,7 +7,7 @@ export const metadata:Metadata={
  verification:{google:'FoDBik6jePUWAUkMS5VgmKa0BqKj9rtsMqnLYPvyPnw'},
  robots:{index:process.env.VERCEL_ENV!=='preview',follow:true},
  manifest:'/manifest.webmanifest',
- icons:{icon:[{url:'/favicon.png',type:'image/png',sizes:'64x64'},{url:'/favicon.svg',type:'image/svg+xml'}],shortcut:'/favicon.png',apple:'/icon-512.png'},
+ icons:{icon:[{url:'/favicon.ico',sizes:'any'},{url:'/favicon.svg',type:'image/svg+xml'},{url:'/favicon.png',type:'image/png',sizes:'64x64'}],shortcut:'/favicon.ico',apple:{url:'/apple-touch-icon.png',sizes:'180x180'}},
  applicationName:'DRIOZ',
  openGraph:{title:'DRIOZ — Your personal driver, anytime',description:'A vetted driver for your own car. One way, round trip or outstation.',images:['/hero.jpg'],type:'website'},
 };

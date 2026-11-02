@@ -114,22 +114,26 @@ export default function BookingScreen({
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const cov = await api("coverage", {
-          cityId: "worldwide",
-          pickupPoint: { lat: pickup.lat, lng: pickup.lng },
-          pickupRegion: { city: (pickup.city || "").slice(0, 120), country: (pickup.country || "").slice(0, 3) },
+        // Coverage and fare come back in one request instead of two sequential ones.
+        const priced = type === "return" || !!drop;
+        const res = await api("price", {
+          coverage: {
+            cityId: "worldwide",
+            pickupPoint: { lat: pickup.lat, lng: pickup.lng },
+            pickupRegion: { city: (pickup.city || "").slice(0, 120), country: (pickup.country || "").slice(0, 3) },
+          },
+          ...(priced && !Number.isNaN(scheduledAt) ? { trip: input("") } : {}),
         });
         if (generation !== version.current) return;
-        setCoverage(cov);
-        if (!cov.cityId || cov.status === "not_served" || (type !== "return" && !drop) || Number.isNaN(scheduledAt)) return;
-        const estimate = await api("estimate", input(cov.cityId));
-        if (generation === version.current) setResult(estimate);
+        setCoverage(res.coverage);
+        if (res.estimate) setResult(res.estimate);
+        else if (res.message) setMessage(res.message);
       } catch (e) {
         if (generation === version.current) setMessage(errorText(e, "Unable to estimate"));
       } finally {
         if (generation === version.current) setLoading(false);
       }
-    }, 500);
+    }, 300);
     return () => {
       clearTimeout(timer);
       version.current++;

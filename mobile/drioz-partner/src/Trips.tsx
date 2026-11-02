@@ -3,7 +3,7 @@ import { View, Text, Alert, Linking, Modal, Pressable, ScrollView } from "react-
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { api, money } from "./api";
-import { Card, Button, Field, Badge, Banner, Icon, s, colors, errorText, tap } from "./ui";
+import { Card, Button, Field, Badge, Banner, Choices, Icon, s, colors, errorText, tap } from "./ui";
 import { SteeringStrip } from "./Steering";
 import Inspection from "./Inspection";
 import { useT } from "./i18n";
@@ -23,7 +23,8 @@ export function Trip({ trip, refresh }: { trip: any; refresh: () => Promise<void
     [stars, setStars] = useState(0),
     [comment, setComment] = useState(""),
     [cancelOpen, setCancelOpen] = useState(false),
-    [cancelReason, setCancelReason] = useState("");
+    [cancelReason, setCancelReason] = useState(""),
+    [cancelChoice, setCancelChoice] = useState("");
   let info: any = {};
   try {
     info = JSON.parse(trip.breakdown || "{}");
@@ -86,18 +87,46 @@ export function Trip({ trip, refresh }: { trip: any; refresh: () => Promise<void
           <Badge value={trip.status} />
         </View>
       </View>
-      {["assigned", "arrived"].includes(trip.status) && <View style={{gap: 12}}>
-        <Button secondary disabled={busy} title="Cancel accepted ride" onPress={() => setCancelOpen(!cancelOpen)} />
-        {cancelOpen && <>
-          <Field label="Cancellation reason" value={cancelReason} onChange={setCancelReason} multiline />
-          <Text style={s.muted}>The customer will be notified. This ride stays in booking history.</Text>
-          <Button secondary disabled={busy || cancelReason.trim().length < 3} title="Confirm cancellation" onPress={() => Alert.alert(
-            "Cancel this accepted ride?", "You can only cancel before the journey starts.", [
-              {text: "Keep ride", style: "cancel"},
-              {text: "Cancel ride", style: "destructive", onPress: () => act(`bookings/${trip.id}/status`, {status: "cancelled", reason: cancelReason.trim().slice(0,500)})},
-            ])} />
-        </>}
-      </View>}
+      {["assigned", "arrived"].includes(trip.status) && (
+        <View style={{ gap: 12 }}>
+          <Button secondary disabled={busy} icon="close-circle-outline" title={t("trip.cancel")} onPress={() => setCancelOpen(!cancelOpen)} />
+          {cancelOpen && (
+            <>
+              <Text style={s.label}>{t("trip.cancelWhy")}</Text>
+              <Choices
+                segmented={false}
+                value={cancelChoice}
+                set={setCancelChoice}
+                values={[
+                  { label: t("trip.cancelVehicle"), value: "Vehicle or travel issue" },
+                  { label: t("trip.cancelEmergency"), value: "Personal emergency" },
+                  { label: t("trip.cancelCustomer"), value: "Customer unavailable" },
+                  { label: t("trip.cancelOther"), value: "Other" },
+                ]}
+              />
+              {cancelChoice === "Other" && <Field label={t("trip.cancelReason")} value={cancelReason} onChange={setCancelReason} multiline maxLength={500} />}
+              <Text style={s.muted}>{t("trip.cancelNote")}</Text>
+              <Button
+                secondary
+                busy={busy}
+                disabled={!cancelChoice || (cancelChoice === "Other" && cancelReason.trim().length < 3)}
+                title={t("trip.cancelConfirm")}
+                onPress={() =>
+                  Alert.alert(t("trip.cancelTitle"), t("trip.cancelBody"), [
+                    { text: t("trip.keep"), style: "cancel" },
+                    {
+                      text: t("trip.cancel"),
+                      style: "destructive",
+                      onPress: () =>
+                        act(`bookings/${trip.id}/status`, { status: "cancelled", reason: cancelChoice === "Other" ? cancelReason.trim().slice(0, 500) : cancelChoice }, t("trip.cancelled")),
+                    },
+                  ])
+                }
+              />
+            </>
+          )}
+        </View>
+      )}
       {trip.status === "in_progress" && (
         <View style={{ borderRadius: 14, overflow: "hidden" }}>
           <SteeringStrip height={34} speed={2200} />

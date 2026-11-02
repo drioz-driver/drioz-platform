@@ -643,7 +643,7 @@ form>button{margin-top:4px}
 .offer-error{background:rgba(214,59,59,.16);color:#ffb4b4;padding:10px 12px;border-radius:12px;font-size:14px}
 .offer-actions{display:flex;gap:10px}
 .offer-actions button{min-height:62px;border-radius:18px;border:0}
-.offer-actions .pass{width:72px;background:var(--night-3);color:#cfe0d9}
+.offer-actions .pass{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:72px;padding:0 18px;background:var(--night-3);color:#cfe0d9;font-size:15px;font-weight:800}
 .offer-actions .pass:hover:not(:disabled){background:#1d342c!important}
 .offer-actions .take{flex:1;background:var(--brand);color:#04140e;font-size:18px;font-weight:900;gap:10px}
 .offer-actions .take:hover:not(:disabled){background:var(--brand-strong)!important}
@@ -1097,3 +1097,8 @@ form.inline-form .form-message{flex-basis:100%;margin:0}
 .invoice .inv-meta{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:6px}.invoice h2{font-weight:650;letter-spacing:-.02em}
 .filter-bar[role=group]{gap:8px;align-items:center}.filter-bar button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .two-col>*,.trip-grid>*,.stack>*{min-width:0}.on-road{overflow:hidden;max-width:100%}.panel .steps.offer-steps li,.steps.offer-steps li{color:var(--ink-2);background:var(--surface);border:1px solid var(--line)}
+/* Partner: cancel an accepted ride with a reason */
+.partner-cancel{width:100%;border-top:1px solid var(--line,rgba(127,127,127,.2));padding-top:10px}
+.partner-cancel summary{cursor:pointer;font-weight:700;color:var(--muted,inherit)}
+.partner-cancel form{display:grid;gap:10px;margin-top:10px}
+.partner-cancel label{display:grid;gap:6px;font-size:14px}

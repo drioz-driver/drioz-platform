@@ -50,8 +50,14 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
   fromHash();window.addEventListener('hashchange',fromHash);
   refresh().then(r=>{if(active&&!partnerPortal&&homePortal(r.me.role)==='partner')location.replace('/partner')}).catch(e=>{if(active)setFatal(errorMessage(e))}).finally(()=>{if(active)setLoading(false)});
   const expired=()=>{setData(null);setFatal('Your session has ended. Sign in again to continue.')};window.addEventListener('drioz-session-expired',expired);
-  const interval=setInterval(()=>{if(!document.hidden)refresh().catch(()=>{})},15000);
-  const visible=()=>{if(!document.hidden)refresh().catch(()=>{})};document.addEventListener('visibilitychange',visible);
+  // Poll a tiny change marker; download the full snapshot only when something changed (or every 60 s as a safety net).
+  let pulse='',fullAt=0,busy=false;
+  const sync=async(force=false)=>{if(document.hidden||busy)return;busy=true;try{
+   // Read the marker before the snapshot so a change landing in between is caught on the next tick.
+   const p=await api('pulse');if(!force&&pulse&&p.v===pulse&&Date.now()-fullAt<60000)return;
+   await refresh();pulse=p.v;fullAt=Date.now()}catch{}finally{busy=false}};
+  const interval=setInterval(()=>{sync()},10000);
+  const visible=()=>{sync(true)};document.addEventListener('visibilitychange',visible);
   return()=>{active=false;clearInterval(interval);window.removeEventListener('drioz-session-expired',expired);window.removeEventListener('hashchange',fromHash);document.removeEventListener('visibilitychange',visible);if(watch.current!==null)navigator.geolocation.clearWatch(watch.current)};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[refresh]);

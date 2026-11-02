@@ -12,6 +12,7 @@ const config: ExpoConfig = {
   scheme: "driozpartner",
   orientation: "portrait",
   icon: "./assets/icon.png",
+  web: { favicon: "./assets/icon.png" },
   userInterfaceStyle: "light",
   backgroundColor: NIGHT,
   primaryColor: "#00E699",

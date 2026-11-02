@@ -1095,6 +1095,52 @@ form.inline-form .form-message{flex-basis:100%;margin:0}
 .trip-fare>div small{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.trip-fare>div small svg{display:inline-block;flex:none}
 .section-heading h2 svg,h2>svg,h3>svg{display:inline-block}
 .invoice .inv-meta{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:6px}.invoice h2{font-weight:650;letter-spacing:-.02em}
+/* ---------- Type & spacing polish (Nov 2026) — same theme, calmer rhythm ---------- */
+/* Phones never scroll sideways (the hero photo was 6px wider than the screen). */
+.guest-booking,.customer-site{overflow-x:clip}
+/* Booking form: readable labels, one label style, steady field rhythm. */
+.booking-panel label.field{margin-bottom:16px}
+.booking-panel label.field>span{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px;letter-spacing:0}
+.booking-step-title{font-size:12.5px;color:var(--muted);letter-spacing:.01em}
+.booking-timing{margin:4px 0 20px}
+.booking-timing>span{font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink);margin:0 0 8px}
+.booking-timing-options{gap:10px}
+.booking-timing-options button{min-height:46px;font-size:14px;font-weight:600;border-radius:10px}
+.booking-trip-tabs button{font-size:13.5px}
+.address-current{display:inline-flex;align-items:center;gap:6px;width:auto;min-height:34px;margin:-6px 0 16px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--brand-deep);font-size:13px;font-weight:600;line-height:1.2}
+.address-current:hover:not(:disabled){border-color:var(--brand-strong)}
+/* "Plan your journey": same heading weight as the rest of the page, readable body text. */
+@media(max-width:800px){
+ .guest-booking .customer-journeys{padding:28px 20px 12px}
+ .guest-booking .customer-journeys h2{font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin:8px 0 10px;text-wrap:balance}
+ .guest-booking .customer-journeys p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 8px;max-width:60ch}
+}
+.guest-booking .customer-journeys h2{font-weight:700}
+/* Signed-in hero: three compact stats in one row on phones. */
+@media(max-width:600px){
+ .hero-proof{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:28px;padding-top:20px}
+ .hero-proof strong{font-size:20px;line-height:1.2}
+ .hero-proof span{font-size:12px;line-height:1.35;margin-top:2px}
+}
+/* Trip cards: legible route labels and evenly spaced actions. */
+.trip-route{gap:16px}
+.trip-route small,.customer-site .trip-route small{font-size:11px;letter-spacing:.06em;color:var(--muted);margin-bottom:2px}
+.trip-route strong,.customer-site .trip-route strong{font-size:15px;font-weight:600;line-height:1.45}
+.trip .actions,.trip-card .actions{gap:8px;row-gap:8px}
+/* Home page: the bottom-nav allowance belongs at the very end, not between the form and the guide. */
+/* Home page: the guide and site footer follow the booking area; the old one-line footer is replaced. */
+.guest-home:has(+section)>footer{display:none}
+@media(max-width:800px){.guest-home:has(+section){min-height:0;padding-bottom:0}}
+.guest-home:has(+section) .customer-journeys{margin-bottom:0}
+/* Desktop header: two matched, quiet buttons instead of a pill tray. */
+@media(min-width:801px){
+ .guest-booking>.site-header nav{gap:10px;padding:0;background:none;border:0;border-radius:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+ .guest-booking>.site-header nav a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:10px;font-size:14px;font-weight:600;letter-spacing:0;line-height:1;text-decoration:none;box-shadow:none!important;transition:background-color .15s,border-color .15s,color .15s}
+ .guest-booking>.site-header nav a.button{background:rgba(7,17,14,.58)!important;color:#fff!important;border:1px solid rgba(255,255,255,.34)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+ .guest-booking>.site-header nav a.button:hover{background:rgba(7,17,14,.78)!important;border-color:rgba(255,255,255,.6)!important}
+ .guest-booking>.site-header nav a.primary{background:var(--brand)!important;color:#04140e!important;border:1px solid var(--brand)!important}
+ .guest-booking>.site-header nav a.primary:hover{background:var(--brand-strong)!important;border-color:var(--brand-strong)!important}
+}
 .filter-bar[role=group]{gap:8px;align-items:center}.filter-bar button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .two-col>*,.trip-grid>*,.stack>*{min-width:0}.on-road{overflow:hidden;max-width:100%}.panel .steps.offer-steps li,.steps.offer-steps li{color:var(--ink-2);background:var(--surface);border:1px solid var(--line)}
 /* Partner: cancel an accepted ride with a reason */

@@ -233,11 +233,14 @@ export default function BookingScreen({
           <Text style={[s.price, { color: "#fff", fontSize: 40 }]}>{money(result.total)}</Text>
           <View style={{ gap: 2 }}>
             {[
-              [t("book.serviceFare"), result.base, true],
+              [result.rates ? (result.hours ? t("book.packageFare", { hours: result.hours }) : t("book.baseFare")) : t("book.serviceFare"), result.base, true],
+              [t("book.oneWayCharge"), result.oneWayCharge, false],
+              [t("book.extraTime", { minutes: result.timeMinutes || 0 }), result.time, false],
               [t("book.additionalHours"), result.extra, false],
               [t("book.night"), result.night, false],
               [result.surgeLabel || t("book.surge"), result.surge, false],
               [t("book.tax"), result.tax, false],
+              [t("book.rounding"), result.rounding, false],
             ]
               .filter(([, v, always]) => always || Number(v) > 0)
               .map(([label, v]) => (

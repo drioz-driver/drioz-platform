@@ -7,6 +7,7 @@ const apple = process.env.EXPO_PUBLIC_APPLE_SIGN_IN !== "false";
 const config: ExpoConfig = {
   name: "DRIOZ Partner",
   slug: "drioz-partner",
+  owner: "cliquelog",
   version: "2.0.0",
   scheme: "driozpartner",
   orientation: "portrait",
@@ -69,6 +70,6 @@ const config: ExpoConfig = {
       },
     ],
   ],
-  extra: { ...(process.env.EAS_PROJECT_ID ? { eas: { projectId: process.env.EAS_PROJECT_ID } } : {}) },
+  extra: { eas: { projectId: process.env.EAS_PROJECT_ID || "3a46fadd-bb35-4d74-966e-8249d10ca589" } },
 };
 export default config;

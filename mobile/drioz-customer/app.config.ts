@@ -7,6 +7,7 @@ const apple = process.env.EXPO_PUBLIC_APPLE_SIGN_IN !== "false";
 const config: ExpoConfig = {
   name: "DRIOZ",
   slug: "drioz-customer",
+  owner: "cliquelog",
   version: "2.0.0",
   scheme: "drioz",
   orientation: "portrait",
@@ -42,6 +43,6 @@ const config: ExpoConfig = {
     ["expo-location", { locationWhenInUsePermission: "DRIOZ uses your location to set your pickup point and to share it with our safety team if you press SOS." }],
     ["expo-notifications", { color: "#00E699" }],
   ],
-  extra: { ...(process.env.EAS_PROJECT_ID ? { eas: { projectId: process.env.EAS_PROJECT_ID } } : {}) },
+  extra: { eas: { projectId: process.env.EAS_PROJECT_ID || "0b3db625-6526-483c-b385-4aa8d1b9d48c" } },
 };
 export default config;

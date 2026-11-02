@@ -76,7 +76,7 @@ export function InvoiceView({inv,onClose}:{inv:any;onClose:()=>void}){
  return <div className="invoice-overlay" role="dialog" aria-modal="true" aria-label="Invoice" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
   <article className="invoice">
    <button className="inv-close icon-btn" aria-label="Close" onClick={onClose}><X size={18}/></button>
-   <div className="inv-head"><img src="/drioz-logo-light.png" alt="DRIOZ" height={28}/><span className={'tax-badge'+(inv.taxInvoice?'':' muted')}>{inv.taxInvoice?'TAX INVOICE':'FARE STATEMENT'}</span></div>
+   <div className="inv-head"><img src="/drioz-logo.png" alt="DRIOZ" height={28}/><span className={'tax-badge'+(inv.taxInvoice?'':' muted')}>{inv.taxInvoice?'TAX INVOICE':'FARE STATEMENT'}</span></div>
    <h2>{inv.taxInvoice?`Invoice ${inv.invoiceNumber}`:inv.invoiceNumber?`Statement ${inv.invoiceNumber}`:'Fare statement'}</h2>
    <div className="inv-meta"><span>Issued <b>{when(inv.issuedAt)}</b></span><span>Trip <b>DR-{String(inv.reference).slice(0,8).toUpperCase()}</b></span><span>Status <b style={{textTransform:'capitalize'}}>{String(inv.status).replace('_',' ')}</b></span></div>
    <div className="inv-parties">

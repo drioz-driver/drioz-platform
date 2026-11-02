@@ -8,6 +8,7 @@
 
 :root{
   --brand:#00e699;--brand-strong:#00c784;--brand-deep:#00875a;--brand-soft:#e3fbf1;--brand-glow:rgba(0,230,153,.28);
+  --brand-logo-image:url('/drioz-logo.png');
   --ink:#0c1714;--ink-2:#26332f;--muted:#66756f;--subtle:#93a19b;
   --bg:#f4f6f5;--surface:#ffffff;--surface-2:#f9fbfa;--surface-3:#eef2f0;
   --line:#e2e8e5;--line-strong:#cfd8d4;
@@ -25,6 +26,7 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
+    --brand-logo-image:url('/drioz-logo-light.png');
     --ink:#e9f2ee;--ink-2:#c9d6d1;--muted:#93a39d;--subtle:#6c7c76;
     --bg:#070d0b;--surface:#0e1916;--surface-2:#121f1b;--surface-3:#182823;
     --line:#1f312b;--line-strong:#2b423a;--brand-soft:rgba(0,230,153,.12);
@@ -34,6 +36,7 @@
   }
 }
 :root[data-theme="dark"]{
+  --brand-logo-image:url('/drioz-logo-light.png');
   --ink:#e9f2ee;--ink-2:#c9d6d1;--muted:#93a39d;--subtle:#6c7c76;
   --bg:#070d0b;--surface:#0e1916;--surface-2:#121f1b;--surface-3:#182823;
   --line:#1f312b;--line-strong:#2b423a;--brand-soft:rgba(0,230,153,.12);
@@ -117,6 +120,10 @@ form>button{margin-top:4px}
 
 /* ---------- Brand logo ---------- */
 .brand-logo{display:block;height:44px;width:auto}
+.brand-logo[data-logo-tone="auto"]{content:var(--brand-logo-image)}
+:is(.sidebar,.auth-story,.loading,.site-footer) .brand-logo[data-logo-tone="auto"]{content:url('/drioz-logo-light.png')}
+:is(.site,.guest-booking)>.site-header .brand-logo[data-logo-tone="auto"]{content:url('/drioz-logo-light.png')}
+@media(max-width:800px){.customer-site>.site-header .brand-logo[data-logo-tone="auto"]{content:var(--brand-logo-image)}}
 .brand-logo.on-dark{filter:none}
 .footer-logo{height:40px}
 .loading-logo{height:64px;margin-bottom:8px}
@@ -549,7 +556,6 @@ form>button{margin-top:4px}
 }
 .mobile-only{display:none}
 @media (max-width:980px){.mobile-only{display:inline-flex}.crumbs>span:not(.mobile-only),.crumbs>strong{display:none}}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .topbar .brand-logo{content:url('/drioz-logo-light.png')}}
 
 /* ==========================================================================
    Steering-wheel motion system

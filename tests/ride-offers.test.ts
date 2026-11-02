@@ -26,3 +26,22 @@ test('wrong driver and replayed tokens cannot claim an offer',async()=>{const s=
 test('passing moves to another driver; insufficient wallet and offline drivers get no offer',async()=>{const s=await setup();try{await s.offers.poll('b');await s.booking();const offer=(await s.offers.poll('a')).offers[0];await s.offers.pass('a',offer.offer_id);assert.equal((await s.offers.poll('b')).offers.length,1);await s.db.prepare("UPDATE driver_accounts SET promo=0,recharge=0 WHERE driver_id='a'").run();await s.db.prepare("UPDATE drivers SET online=0 WHERE user_id='b'").run();s.advance();assert.equal((await s.offers.poll('a')).offers.length,0)}finally{await s.pg.close()}});
 test('expired acceptance rolls back assignment and wallet reservation; current acceptance succeeds once',async()=>{const s=await setup();try{const id=await s.booking();const offer=(await s.offers.poll('a')).offers[0];const ops=operations(s.db,null,'','', 'rzp_test_unit',true),actor={id:'a',email:'a@example.invalid',name:'A',role:'driver',disabled:0};await s.db.prepare('UPDATE ride_offers SET offered_at=?,expires_at=? WHERE booking_id=?').bind(Date.now()-20000,Date.now()-10000,id).run();await assert.rejects(ops.handle(actor,`bookings/${id}/assign`,'POST',{driverId:'a',offerId:offer.offer_id}),(e:any)=>e.status===409);assert.equal((await s.db.prepare('SELECT status FROM bookings WHERE id=?').bind(id).first()).status,'requested');assert.equal((await s.db.prepare('SELECT COUNT(*) AS n FROM driver_trip_money').first()).n,0);const fresh=(await s.offers.poll('a')).offers[0];await ops.handle(actor,`bookings/${id}/assign`,'POST',{driverId:'a',offerId:fresh.offer_id});assert.equal((await s.db.prepare('SELECT status FROM bookings WHERE id=?').bind(id).first()).status,'assigned');assert.equal((await s.db.prepare('SELECT COUNT(*) AS n FROM driver_trip_money').first()).n,1)}finally{await s.pg.close()}});
 test('an eligible driver never holds two live offer slots at once',async()=>{const s=await setup();try{await s.booking();await s.booking();assert.equal((await s.offers.poll('a')).offers.length,1);assert.equal((await s.db.prepare("SELECT COUNT(*) AS n FROM ride_offers WHERE driver_id='a' AND state='offered' AND expires_at>?").bind(s.at()).first()).n,1);assert.equal((await s.offers.poll('b')).offers.length,1)}finally{await s.pg.close()}});
+
+test('acceptance retries a rolled-back serialization failure and repeated clicks reserve funds only once',async()=>{
+ const s=await setup();try{
+  const id=await s.booking(),offer=(await s.offers.poll('a')).offers[0];let failed=false;
+  const flaky={...s.db,transaction:(work:any)=>s.db.transaction(async(tx:any)=>{const result=await work(tx);if(!failed){failed=true;throw Object.assign(Error('serialization conflict'),{code:'40001'})}return result})};
+  const ops=operations(flaky,null,'','', 'rzp_test_unit',true),actor={id:'a',email:'a@example.invalid',name:'A',role:'driver',disabled:0};
+  const first=await ops.handle(actor,`bookings/${id}/assign`,'POST',{driverId:'a',offerId:offer.offer_id});assert.equal(first.booking.status,'assigned');assert.equal(first.alreadyAccepted,false);
+  const again=await ops.handle(actor,`bookings/${id}/assign`,'POST',{driverId:'a',offerId:offer.offer_id});assert.equal(again.alreadyAccepted,true);
+  assert.equal((await s.db.prepare('SELECT COUNT(*) AS n FROM driver_trip_money').first()).n,1);
+  assert.equal((await s.db.prepare("SELECT COUNT(*) AS n FROM audit WHERE target=? AND action='assigned'").bind(id).first()).n,1);
+ }finally{await s.pg.close()}
+});
+test('a general India request reaches nearby GPS-sharing drivers, never a far-away driver',async()=>{
+ const s=await setup();try{
+  const id=await s.booking();await s.db.prepare("INSERT INTO cities(id,name,base,hourly) VALUES('india','India',5000,0)").run();await s.db.prepare("UPDATE bookings SET city_id='india' WHERE id=?").bind(id).run();
+  await s.db.prepare("UPDATE drivers SET lat=17,lng=78,location_at=? WHERE user_id='a'").bind(s.at()).run();await s.db.prepare("UPDATE drivers SET lat=13,lng=77,location_at=? WHERE user_id='b'").bind(s.at()).run();
+  assert.equal((await s.offers.poll('b')).offers.length,0);assert.equal((await s.offers.poll('a')).offers[0].id,id);
+ }finally{await s.pg.close()}
+});

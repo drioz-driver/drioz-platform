@@ -1,6 +1,7 @@
  'use client';
 import {useEffect,useRef,useState} from 'react';
 import Logo from './logo';
+import {cityDefaults} from '@/lib/domain';
 import CustomerMobileNav from './customer-mobile-nav';
 import BookingForm from './booking-form';
 import {Spinner} from '@/components/ui/spinner';
@@ -9,7 +10,7 @@ export default function GuestBooking(){
  const [section,Section]=useState('home');
  useEffect(()=>{const update=()=>{Section(location.hash==='#account'?'account':location.hash==='#customer/trips'?'rides':'home')};update();window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update)},[]);
 
- const [cities,C]=useState<any[]>([]),[error,E]=useState(''),[ready,R]=useState(false),[login,L]=useState(false);
+ const [cities,C]=useState<any[]>([...cityDefaults.map(([id,name,base])=>({id,name,base})),{id:'india',name:'India',base:24900}]),[error,E]=useState(''),[ready,R]=useState(true),[login,L]=useState(false);
  useEffect(()=>{if(!login)return;const previous=document.activeElement as HTMLElement|null;const first=modal.current?.querySelector<HTMLElement>('button,a');first?.focus();const key=(e:KeyboardEvent)=>{if(e.key==='Escape')L(false);if(e.key==='Tab'){const items=Array.from(modal.current?.querySelectorAll<HTMLElement>('button,a[href]')||[]);const start=items[0],end=items[items.length-1];if(e.shiftKey&&document.activeElement===start){e.preventDefault();end?.focus()}else if(!e.shiftKey&&document.activeElement===end){e.preventDefault();start?.focus()}}};document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.focus()}},[login]);
  async function load(){E('');try{const r=await fetch('/api/booking/cities');const body:any=await r.json();if(!r.ok)throw Error(body.message);C(body.cities);R(true)}catch{E('Booking is temporarily unavailable. Please try again.')}}
  useEffect(()=>{load()},[]);

@@ -4,6 +4,7 @@
  * GST invoice view and company billing. Rendered through TripCard slots.
  */
 import {useEffect,useState} from 'react';
+import dynamic from 'next/dynamic';
 import {Building2,CreditCard,LocateFixed,MapPin,Phone,Printer,Siren,Star,X} from 'lucide-react';
 import {Form} from './primitives';
 import {api,errorMessage,fmt,tripTypeName,when} from './client';
@@ -11,23 +12,27 @@ import type {TripActions} from './trip-card';
 import {sosAvailable,StarPicker} from './partner-trip';
 
 const rateTags=['Smooth driving','On time','Polite','Knew the route','Careful with my car'];
+const LiveTripMap=dynamic(()=>import('./live-trip-map'),{ssr:false,loading:()=> <div className="live-trip-map" aria-label="Loading live map"/>});
 
 /** Live position + ETA while a trip is assigned, at pickup or on the road. Refreshes every 20 s. */
 export function LiveTrack({b}:{b:any}){
  const live=['assigned','arrived','in_progress'].includes(b.status);
- const [info,setInfo]=useState<any>(null);
- useEffect(()=>{if(!live)return;let on=true;const load=()=>{if(document.hidden)return;api(`bookings/${b.id}/location`).then(r=>{if(on)setInfo(r)}).catch(()=>{})};load();const t=setInterval(load,20000);return()=>{on=false;clearInterval(t)}},[b.id,live]);
+ const [info,setInfo]=useState<any>(null),[at,setAt]=useState(Date.now());
+ useEffect(()=>{if(!live)return;let on=true,pending=false;const load=()=>{setAt(Date.now());if(document.hidden||pending)return;pending=true;api(`bookings/${b.id}/location`).then(r=>{if(on)setInfo(r)}).catch(()=>{}).finally(()=>{pending=false})};load();const t=setInterval(load,5000);document.addEventListener('visibilitychange',load);return()=>{on=false;clearInterval(t);document.removeEventListener('visibilitychange',load)}},[b.id,b.status,live]);
  if(!live)return null;
  const target=b.status==='in_progress'?'destination':'pickup';
- const eta=info?.etaMinutes;
+ const driver=info?.location&&info.location.location_at>at-120000?info.location:null;
+ const eta=driver?info?.etaMinutes:null;
+ const point=info?.target||{lat:b.status==='in_progress'?b.destination_lat:b.pickup_lat,lng:b.status==='in_progress'?b.destination_lng:b.pickup_lng,kind:target};
  return <div className="track-card" aria-live="polite">
+  <LiveTripMap driver={driver} target={point}/>
   <div className="track-info">
    <span className="track-pulse" aria-hidden="true"/>
    <div className="grow"><strong>{b.status==='arrived'?'Your driver is at the pickup':b.status==='in_progress'?'On the way to your destination':(b.driver_name?b.driver_name.split(' ')[0]+' is on the way':'Driver on the way')}</strong>
-    <small>{info?.location?`Updated ${when(info.location.location_at)}${info.distanceKm!=null?` · ${info.distanceKm} km from ${target}`:''}`:'Waiting for the driver’s live location'}</small></div>
+    <small>{driver?`Updated ${when(driver.location_at)}${info.distanceKm!=null?` · ${info.distanceKm} km from ${target}`:''}`:'Waiting for the driver’s live location'}</small></div>
    {eta!=null&&b.status!=='arrived'&&<div className="track-eta"><b>{eta}</b><span>min</span></div>}
   </div>
-  {info?.location&&<a className="button block" style={{borderRadius:0,border:0,borderTop:'1px solid var(--line)'}} href={`https://www.google.com/maps/search/?api=1&query=${info.location.lat},${info.location.lng}`} target="_blank" rel="noreferrer"><LocateFixed size={15}/>Open live position in Google Maps</a>}
+  {driver&&<a className="button block" style={{borderRadius:0,border:0,borderTop:'1px solid var(--line)'}} href={`https://www.google.com/maps/search/?api=1&query=${driver.lat},${driver.lng}`} target="_blank" rel="noreferrer"><LocateFixed size={15}/>Open live position in Google Maps</a>}
  </div>;
 }
 

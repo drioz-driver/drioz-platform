@@ -33,14 +33,15 @@ function toOffer(raw: any, seenBookings: Set<string>): Offer {
 export function useOffers({ enabled }: { enabled: boolean }) {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [skew, setSkew] = useState(0);
+  const accepted = useRef(new Set<string>());
   const handled = useRef(new Set<string>()),
     seen = useRef(new Set<string>()),
     pending = useRef(false);
   const consider = useCallback((raw: any, server?: number) => {
     if (server) setSkew(server - Date.now());
-    if (!raw || handled.current.has(raw.offer_id)) return;
+    if (!raw || handled.current.has(raw.offer_id) || accepted.current.has(raw.id)) return;
     const next = toOffer(raw, seen.current);
-    setOffer((current) => (current?.id === next.id ? current : current && current.expiresAt > Date.now() ? current : next));
+    setOffer((current) => (current?.id === next.id ? current : current && current.expiresAt > (server || Date.now()) ? current : next));
     alertOffer(next, AppState.currentState === "active").catch(() => {});
   }, []);
   const poll = useCallback(() => {
@@ -75,5 +76,5 @@ export function useOffers({ enabled }: { enabled: boolean }) {
       return null;
     });
   }, []);
-  return { offer, skew, close, pollNow: poll, markHandled: (id: string) => handled.current.add(id) };
+  return { offer, skew, close, markAccepted: (o: Offer) => { handled.current.add(o.id); accepted.current.add(o.bookingId); }, pollNow: poll, markHandled: (id: string) => handled.current.add(id) };
 }

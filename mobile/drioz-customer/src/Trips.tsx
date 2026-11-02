@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Alert, Share, Linking } from "react-native";
 import * as Location from "expo-location";
 import { api, apiOrigin, money } from "./api";
@@ -32,6 +32,8 @@ export function Trip({
   onPay?: () => void;
 }) {
   const { t } = useI18n();
+  const [expiresAt, setExpiresAt] = useState(0), [clock, setClock] = useState(Date.now());
+  useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const [startCode, setStartCode] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -42,7 +44,7 @@ export function Trip({
     setError("");
     try {
       const r = await api(path, data);
-      if (data !== undefined) await refresh();
+      if (data !== undefined) await refresh().catch(() => {});
       return r;
     } catch (e) {
       setError(errorText(e, "Request failed"));
@@ -174,7 +176,7 @@ export function Trip({
         </View>
         {!!startCode && ["assigned", "arrived"].includes(trip.status) ? (
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={{ fontSize: 28, fontWeight: "900", letterSpacing: 5, color: colors.brandDeep, fontVariant: ["tabular-nums"] }}>{startCode}</Text>
+            <Text style={{ fontSize: 28, fontWeight: "900", letterSpacing: 5, color: colors.brandDeep, fontVariant: ["tabular-nums"] }}>{expiresAt > clock ? startCode : t("trip.codeExpired")}</Text>
             <Text style={s.muted}>{t("trip.codeValid")}</Text>
           </View>
         ) : null}
@@ -187,14 +189,14 @@ export function Trip({
           {trip.cancellation_fee ? <Row label={t("trip.cancellationFee")} value={money(trip.cancellation_fee)} /> : null}
         </View>
       ) : null}
-      {["assigned", "arrived"].includes(trip.status) && !startCode ? (
+      {["assigned", "arrived"].includes(trip.status) ? (
         <Button
           busy={busy}
           icon="key"
-          title={t("trip.startCode")}
+          title={t(startCode ? "trip.regenerateCode" : "trip.startCode")}
           onPress={async () => {
             const r = await act(`bookings/${trip.id}/start-code`, {});
-            if (r?.code) setStartCode(r.code);
+            if (r?.code) { setStartCode(r.code); setExpiresAt(r.expiresAt); }
           }}
         />
       ) : null}

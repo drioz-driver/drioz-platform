@@ -65,9 +65,9 @@ test('price returns coverage and the same fare as a separate estimate',async()=>
  const onlyCoverage=await w.ops.handle(w.customer,'price','POST',{coverage});
  assert.equal(onlyCoverage.estimate,null);assert.equal(onlyCoverage.coverage.cityId,'hyderabad');
  const far=await w.ops.handle(w.customer,'price','POST',{coverage,trip:{...oneWay,cityId:'',destinationPoint:{lat:12.97,lng:77.59}}});
- assert.equal(far.estimate,null);assert.match(far.message,/service zones/);
+ assert.ok(far.estimate.total>0,'a valid pickup may have a destination outside the pickup service zone');
  const outside=await w.ops.handle(w.customer,'price','POST',{coverage:{cityId:'worldwide',pickupPoint:{lat:51.5,lng:-0.12},pickupRegion:{city:'London',country:'GB'}},trip:oneWay});
- assert.equal(outside.coverage.status,'not_served');assert.equal(outside.estimate,null);
+ assert.equal(outside.coverage.status,'quote_required');assert.equal(outside.estimate,null);
 });
 
 test('booking history lists trips as customer and as driver',async()=>{

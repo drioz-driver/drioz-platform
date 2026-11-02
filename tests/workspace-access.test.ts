@@ -19,6 +19,10 @@ test('booking payload never contains a customer-entered fare or one-way package'
 
 test('partner portal shows only partner screens and drivers are sent there',()=>{
  for(const requested of ['customer','admin','unknown',''])assert.equal(allowedWorkspace(requested,'driver',true,'partner'),'driver');
- assert.equal(allowedWorkspace('account','driver',true,'partner'),'account');assert.equal(allowedWorkspace('customer','customer',false,'partner'),'driver');
+ assert.equal(allowedWorkspace('account','driver',true,'partner'),'account');assert.equal(allowedWorkspace('customer','customer',false,'partner'),'customer');
  assert.equal(homePortal('driver'),'partner');assert.equal(homePortal('customer'),'customer');assert.equal(homePortal('admin'),'customer');
+});
+
+test('customer accounts cannot open any partner workspace, even with an existing driver record',()=>{
+ for(const hasDriver of [false,true])for(const requested of ['driver','support','notifications','account','unknown'])assert.equal(allowedWorkspace(requested,'customer',hasDriver,'partner'),'customer');
 });

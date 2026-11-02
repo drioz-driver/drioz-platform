@@ -1,5 +1,5 @@
 'use client';
-import type {ReactNode} from 'react';
+import {useEffect,useState,type ReactNode} from 'react';
 import {Calendar,Car,Clock,Cog,FileText,KeyRound,LocateFixed,Navigation,Share2,Star,UserRound,Zap} from 'lucide-react';
 import {Badge,Field,Form} from './primitives';
 import {fmt,ref,tripTypeName,when} from './client';
@@ -12,7 +12,8 @@ export type TripActions={
  click:(path:string,payload:unknown)=>Promise<void>;
  cityName:(id:string)=>string;
  code?:string;
- onCode?:(code:string)=>void;
+ codeExpiresAt?:number;
+ onCode?:(code:string,expiresAt:number)=>void;
  onStatement?:()=>void;
  onLocation?:()=>void;
  onShare?:()=>void;
@@ -58,8 +59,7 @@ export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:
    <div>
     {mode==='customer'&&b.company_id&&<small>Billed to company</small>}{b.invoice_number&&<small>Invoice {b.invoice_number}</small>}{b.driver_name&&mode!=='partner'&&<small><UserRound size={13} style={{verticalAlign:-2}}/> {b.driver_name}{b.driver_rating?<> · <Star size={12} style={{verticalAlign:-1}}/> {b.driver_rating}</>:null}</small>}
     {mode==='dispatch'&&b.customer_name&&<small>Customer · {b.customer_name}</small>}
-    {mode==='customer'&&['assigned','arrived'].includes(b.status)&&!t.code&&<button className="primary sm" disabled={t.busy} onClick={async()=>{try{const r=await t.act(`bookings/${b.id}/start-code`,{});t.onCode?.(r.code)}catch{}}}><KeyRound size={15}/>Get start code</button>}
-    {t.code&&['assigned','arrived'].includes(b.status)&&<strong className="code">{t.code}<small>Valid 15 min · share on arrival</small></strong>}
+    {mode==='customer'&&['assigned','arrived'].includes(b.status)&&<StartCode bookingId={b.id} t={t}/>}
    </div>
   </div>
   {actions!==undefined?actions:<div className="actions">
@@ -80,4 +80,16 @@ export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:
   </div>}
   {after}
  </article>;
+}
+
+function StartCode({bookingId,t}:{bookingId:string;t:TripActions}){
+ const [at,setAt]=useState(Date.now());
+ useEffect(()=>{const timer=setInterval(()=>setAt(Date.now()),1000);return()=>clearInterval(timer)},[]);
+ const seconds=Math.max(0,Math.ceil(((t.codeExpiresAt||0)-at)/1000));
+ async function generate(){try{const r=await t.act(`bookings/${bookingId}/start-code`,{});t.onCode?.(r.code,r.expiresAt)}catch{}}
+ return <div className="start-code-control">
+  {t.code&&<><strong className="code">{seconds>0?t.code:'Expired'}</strong><small role="status">{seconds>0?`Valid for ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} · share on arrival`:'Generate a new code before starting.'}</small></>}
+  <button className="primary sm" disabled={t.busy} onClick={generate}><KeyRound size={15}/>{t.code?'Regenerate start code':'Get start code'}</button>
+  {t.code&&<small>The previous code stops working when you regenerate.</small>}
+ </div>;
 }

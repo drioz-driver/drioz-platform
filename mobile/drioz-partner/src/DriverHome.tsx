@@ -149,6 +149,7 @@ export default function DriverScreen({ data, refresh, onWallet }: { data: any; r
                 run(async () => {
                   await api("driver/availability", { online: !d.online });
                   if (d.online && !active) await stopTracking();
+                  if (!d.online) await startTracking(false).catch(() => setNotice("You are online. Allow location access so nearby customers can find you."));
                 });
               }}
             />

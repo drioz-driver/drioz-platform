@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {ArrowUpRight,Bell,Car,CircleAlert,CircleCheck,Copy,ExternalLink,Gauge,LayoutDashboard,LifeBuoy,Printer,RefreshCw,UserRound,X,type LucideIcon} from 'lucide-react';
 import Logo from './logo';
 import {maps} from './maps-address';
-import {allowedWorkspace,customerViews,homePortal,partnerViews,type Portal} from '@/lib/workspace-access';
+import {allowedWorkspace,canUsePartner,customerViews,homePortal,partnerViews,type Portal} from '@/lib/workspace-access';
 import {api,errorMessage,fmt,initials,label,when} from './_ui/client';
 import {Badge,Modal} from './_ui/primitives';
 import type {TripActions} from './_ui/trip-card';
@@ -35,13 +35,14 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
  const partnerPortal=portal==='partner',home=partnerPortal?'driver':'customer',views=partnerPortal?partnerViews:customerViews,base=partnerPortal?'/partner':'/';
  const [data,setData]=useState<any>(null),[requestedView,setView]=useState(home),[section,setSection]=useState('overview');
  const [loading,setLoading]=useState(true),[fatal,setFatal]=useState(''),[busy,setBusy]=useState(false),[toasts,setToasts]=useState<Toast[]>([]);
- const [codes,setCodes]=useState<Record<string,string>>({}),[detail,setDetail]=useState<any>(null),[ticket,setTicket]=useState<any>(null);
+ const [codes,setCodes]=useState<Record<string,{code:string;expiresAt:number}>>({}),[detail,setDetail]=useState<any>(null),[ticket,setTicket]=useState<any>(null);
  const [gps,setGps]=useState(false),[position,setPosition]=useState<{lat:number;lng:number;accuracy:number;at:number}|null>(null);
- const watch=useRef<number|null>(null),lastLocation=useRef(0),toastId=useRef(0);
+ const gpsHeartbeat=useRef<ReturnType<typeof setInterval>|null>(null);
+ const watch=useRef<number|null>(null),lastLocation=useRef(0),toastId=useRef(0),snapshotRequest=useRef(0),acceptingOffer=useRef(false);
  const view=allowedWorkspace(requestedView,data?.me?.role||'customer',!!data?.driver,portal);
 
  const toast=useCallback((text:string,tone:'ok'|'error'='ok')=>{const id=++toastId.current;setToasts(t=>[...t.slice(-2),{id,text,tone}]);setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),tone==='error'?7000:4200)},[]);
- const refresh=useCallback(async()=>{const r=await api('snapshot');setData(r);return r},[]);
+ const refresh=useCallback(async()=>{const request=++snapshotRequest.current;const r=await api('snapshot');if(partnerPortal&&!canUsePartner(r.me.role,!!r.driver)){location.replace('/');return r}if(request===snapshotRequest.current)setData(r);return r},[partnerPortal]);
 
  useEffect(()=>{if(data&&requestedView!==view){setView(view);history.replaceState(null,'','#'+view)}},[data,requestedView,view]);
  useEffect(()=>{
@@ -56,32 +57,35 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
    // Read the marker before the snapshot so a change landing in between is caught on the next tick.
    const p=await api('pulse');if(!force&&pulse&&p.v===pulse&&Date.now()-fullAt<60000)return;
    await refresh();pulse=p.v;fullAt=Date.now()}catch{}finally{busy=false}};
-  const interval=setInterval(()=>{sync()},10000);
+  const interval=setInterval(()=>{sync()},5000);
   const visible=()=>{sync(true)};document.addEventListener('visibilitychange',visible);
-  return()=>{active=false;clearInterval(interval);window.removeEventListener('drioz-session-expired',expired);window.removeEventListener('hashchange',fromHash);document.removeEventListener('visibilitychange',visible);if(watch.current!==null)navigator.geolocation.clearWatch(watch.current)};
+  return()=>{active=false;clearInterval(interval);window.removeEventListener('drioz-session-expired',expired);window.removeEventListener('hashchange',fromHash);document.removeEventListener('visibilitychange',visible);if(watch.current!==null)navigator.geolocation.clearWatch(watch.current);if(gpsHeartbeat.current)clearInterval(gpsHeartbeat.current)};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[refresh]);
  // Ride offers: one exclusive 10-second offer per partner (lib/ride-offers.ts). Polling every 2 s is also the
  // partner's presence heartbeat — only partners who polled in the last 15 s are offered rides.
- const [offer,setOffer]=useState<Offer|null>(null),[skew,setSkew]=useState(0);const handledOffers=useRef(new Set<string>()),seenBookings=useRef(new Set<string>());
- const considerOffer=useCallback((raw:any,server?:number)=>{if(server)setSkew(server-Date.now());if(!raw||handledOffers.current.has(raw.offer_id))return;
+ const [offer,setOffer]=useState<Offer|null>(null),[skew,setSkew]=useState(0);const handledOffers=useRef(new Set<string>()),seenBookings=useRef(new Set<string>()),acceptedBookings=useRef(new Set<string>());
+ const considerOffer=useCallback((raw:any,server?:number)=>{if(server)setSkew(server-Date.now());if(!raw||handledOffers.current.has(raw.offer_id)||acceptedBookings.current.has(raw.id))return;
   const o:Offer={id:raw.offer_id,bookingId:raw.id,round:seenBookings.current.has(raw.id)?2:1,expiresAt:Number(raw.expires_at),seconds:Number(raw.seconds||Math.round((raw.expires_at-raw.offered_at)/1000)||10),pickup:raw.pickup,destination:raw.destination,tripType:raw.trip_type,transmission:raw.transmission,scheduledAt:raw.scheduled_at?Number(raw.scheduled_at):null,partnerFare:Number(raw.partner_fare),hours:raw.hours??null,vehicleCategory:raw.vehicleCategory??null,pickupDistanceKm:raw.pickupDistanceKm??null};
   setOffer(c=>c?.id===o.id?c:(c&&c.expiresAt>Date.now()+(server?server-Date.now():0)?c:o))},[]);
  const activeTrip=!!data?.bookings?.some((b:any)=>b.driver_id===data.me.id&&['assigned','arrived','in_progress'].includes(b.status));
  const pollOffers=partnerPortal&&data?.driver?.verification==='approved'&&!!data?.driver?.online&&!activeTrip;
- useEffect(()=>{if(!pollOffers)return;let active=true,pending=false;const poll=()=>{if(document.hidden||pending)return;pending=true;api('driver/offers').then(r=>{if(active)considerOffer(r.offers?.[0]||null,r.serverNow)}).catch(()=>{}).finally(()=>{pending=false})};poll();const timer=setInterval(poll,2000);window.addEventListener('focus',poll);return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',poll)}},[pollOffers,considerOffer]);
+ useEffect(()=>{if(!pollOffers)return;let active=true,pending=false;const poll=()=>{if(document.hidden||pending||acceptingOffer.current)return;pending=true;api('driver/offers').then(r=>{if(active)considerOffer(r.offers?.[0]||null,r.serverNow)}).catch(()=>{}).finally(()=>{pending=false})};poll();const timer=setInterval(poll,2000);window.addEventListener('focus',poll);return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',poll)}},[pollOffers,considerOffer]);
+ useEffect(()=>{if(!partnerPortal||!activeTrip||watch.current!==null||!navigator.permissions)return;let active=true;navigator.permissions.query({name:'geolocation'}).then(p=>{if(active&&p.state==='granted'&&watch.current===null)shareGps()}).catch(()=>{});return()=>{active=false}},[partnerPortal,activeTrip]);
  // Stop GPS automatically once a partner is offline with no active trip.
- useEffect(()=>{if(!data)return;const mine=data.bookings.some((b:any)=>b.driver_id===data.me.id&&['assigned','arrived','in_progress'].includes(b.status));if(!mine&&!data.driver?.online&&watch.current!==null){navigator.geolocation.clearWatch(watch.current);watch.current=null;setGps(false)}},[data]);
+ useEffect(()=>{if(!data)return;const mine=data.bookings.some((b:any)=>b.driver_id===data.me.id&&['assigned','arrived','in_progress'].includes(b.status));if(!mine&&!data.driver?.online&&watch.current!==null){navigator.geolocation.clearWatch(watch.current);watch.current=null;if(gpsHeartbeat.current)clearInterval(gpsHeartbeat.current);gpsHeartbeat.current=null;setGps(false)}},[data]);
 
  function go(v:string,s='overview'){history.pushState(null,'','#'+(s==='overview'?v:v+'/'+s));setView(v);setSection(s);setDetail(null);setTicket(null);window.scrollTo({top:0})}
  function pickSection(s:string){history.pushState(null,'','#'+(s==='overview'?view:view+'/'+s));setSection(s)}
- async function act(path:string,payload:unknown){setBusy(true);try{const result=await api(path,payload);await refresh();toast(result?.message||(result?.requiresLocationReview?'Request received. Operations will verify your addresses before assigning a driver.':'Updated successfully.'));return result}catch(e){toast(errorMessage(e,'Request failed'),'error');throw e}finally{setBusy(false)}}
+ async function act(path:string,payload:unknown){setBusy(true);try{const result=await api(path,payload);if(partnerPortal&&path==='driver/availability'&&(payload as any)?.online&&watch.current===null)shareGps();await refresh().catch(()=>toast('Update saved. Reconnecting the dashboard.'));toast(result?.message||(result?.requiresLocationReview?'Request received. Operations will verify your addresses before assigning a driver.':'Updated successfully.'));return result}catch(e){toast(errorMessage(e,'Request failed'),'error');throw e}finally{setBusy(false)}}
  async function click(path:string,payload:unknown){try{await act(path,payload)}catch{}}
  function shareGps(){
   if(!navigator.geolocation){toast('Location is unavailable on this device','error');return}
-  if(watch.current!==null){navigator.geolocation.clearWatch(watch.current);watch.current=null;setGps(false);return}
+  if(watch.current!==null){navigator.geolocation.clearWatch(watch.current);watch.current=null;if(gpsHeartbeat.current)clearInterval(gpsHeartbeat.current);gpsHeartbeat.current=null;setGps(false);return}
   lastLocation.current=0;
-  watch.current=navigator.geolocation.watchPosition(pos=>{setPosition({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,at:pos.timestamp});if(Date.now()-lastLocation.current<15000)return;lastLocation.current=Date.now();api('driver/location',{lat:pos.coords.latitude,lng:pos.coords.longitude}).catch(e=>toast(errorMessage(e),'error'))},e=>{toast(e.message||'Location permission denied','error');if(watch.current!==null)navigator.geolocation.clearWatch(watch.current);watch.current=null;setGps(false)},{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
+  const publish=(pos:GeolocationPosition)=>{setPosition({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,at:pos.timestamp});if(Date.now()-lastLocation.current<5000)return;lastLocation.current=Date.now();api('driver/location',{lat:pos.coords.latitude,lng:pos.coords.longitude}).catch(e=>toast(errorMessage(e),'error'))};
+  watch.current=navigator.geolocation.watchPosition(publish,e=>{toast(e.message||'Location permission denied','error');if(watch.current!==null)navigator.geolocation.clearWatch(watch.current);watch.current=null;if(gpsHeartbeat.current)clearInterval(gpsHeartbeat.current);gpsHeartbeat.current=null;setGps(false)},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+  gpsHeartbeat.current=setInterval(()=>{if(!document.hidden)navigator.geolocation.getCurrentPosition(publish,()=>{},{enableHighAccuracy:true,maximumAge:5000,timeout:10000})},10000);
   setGps(true);
  }
  async function openTicket(id:string){try{setTicket(await api('tickets/'+id))}catch(e){toast(errorMessage(e),'error')}}
@@ -100,7 +104,7 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
  const mobileNav=(()=>{const all=[...nav,['account','Account',UserRound] as [string,string,LucideIcon,number?]];return all.length>5?all.filter(([v])=>v!=='support'):all})();
  const sectionTabs=view==='admin'?(me.role==='admin'?['overview','bookings','map','partners','documents','analytics','cities','pricing','companies','incentives','finance','team','audit','integrations']:me.role==='operator'?['overview','bookings','map','partners','documents','analytics']:me.role==='finance'?['overview','analytics','finance','incentives']:['overview']):view==='driver'?['overview','trips','earnings','planner','onboarding']:[];
  const activeSection=sectionTabs.length&&!sectionTabs.includes(section)?'overview':section;
- const t=(b:any):TripActions=>({busy,act,click,cityName,drivers,code:codes[b.id],onCode:code=>setCodes(x=>({...x,[b.id]:code})),
+ const t=(b:any):TripActions=>({busy,act,click,cityName,drivers,code:codes[b.id]?.code,codeExpiresAt:codes[b.id]?.expiresAt,onCode:(code,expiresAt)=>setCodes(x=>({...x,[b.id]:{code,expiresAt}})),
   onStatement:async()=>{try{setDetail({statement:await api(`bookings/${b.id}/invoice`)})}catch(e){toast(errorMessage(e),'error')}},
   onLocation:async()=>{try{const r=await api(`bookings/${b.id}/location`);setDetail({location:r.location,trip:b.id})}catch(e){toast(errorMessage(e),'error')}},
   onShare:async()=>{try{const r=await act(`bookings/${b.id}/share`,{});setDetail({shareUrl:location.origin+r.path})}catch{}}});
@@ -113,14 +117,24 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
    :detail.trip?<><h2>Driver location</h2>{detail.location?<><p>Last reported {when(detail.location.location_at)}</p><PointMap lat={detail.location.lat} lng={detail.location.lng}/><a className="button btn block" href={`https://www.google.com/maps/search/?api=1&query=${detail.location.lat},${detail.location.lng}`} target="_blank" rel="noreferrer"><ExternalLink size={16}/>Open in Google Maps</a></>:<p>No recent location shared yet. Positions older than two minutes are hidden for privacy.</p>}</>
    :<><h2>Fare statement</h2><p>{detail.statement.pickup} → {detail.statement.destination}</p><Badge value={detail.statement.status}/><div className="statement">{Object.entries(detail.statement.breakdown).filter(([k,v])=>['base','extra','night','tax','total'].includes(k)&&(k==='base'||k==='total'||Number(v)>0)).map(([k,v])=><div className="ledger-row" key={k}><span>{k==='base'?'Service fare':k==='extra'?'Additional hours':k==='night'?'Night charge':k==='tax'?'Tax':'Total'}</span><strong>{fmt(Number(v))}</strong></div>)}</div>{detail.statement.payments?.length>0&&<p className="helper">Payments recorded: {detail.statement.payments.map((p:any)=>`${fmt(p.amount)} ${label(p.status)} (${label(p.method)})`).join(', ')}</p>}<p className="helper">Reference {detail.statement.reference} · {detail.statement.note}</p><button className="block" onClick={()=>window.print()}><Printer size={16}/>Print statement</button></>}</Modal>}
   {offer&&<OfferPopup key={offer.id} offer={offer} skew={skew}
-   onAccept={async o=>{await api(`bookings/${o.bookingId}/assign`,{driverId:me.id,offerId:o.id});await refresh().catch(()=>{});toast('Ride accepted. Head to the pickup point.')}}
+   onAccept={async o=>{
+    acceptingOffer.current=true;
+    try{
+     const receipt=await api(`bookings/${o.bookingId}/assign`,{driverId:me.id,offerId:o.id});
+     handledOffers.current.add(o.id);acceptedBookings.current.add(o.bookingId);++snapshotRequest.current;
+     setData((current:any)=>current?{...current,bookings:[receipt.booking,...current.bookings.filter((b:any)=>b.id!==o.bookingId)]}:current);
+     void refresh().catch(()=>toast('Ride accepted. The dashboard will reconnect automatically.'));
+     if(watch.current===null)shareGps();
+     toast('Ride accepted. Head to the pickup point.');
+    }finally{acceptingOffer.current=false}
+   }}
    onDecline={async o=>{await api('driver/offers/pass',{offerId:o.id});toast('Ride passed to the next driver.')}}
    onMissed={()=>toast('You missed that ride. If nobody else takes it, it will come back to you.','error')}
    onDone={()=>{setOffer(c=>{if(c){handledOffers.current.add(c.id);seenBookings.current.add(c.bookingId)}return null})}}/>}
   {ticket&&<Modal title="Support conversation" onClose={()=>setTicket(null)}><TicketThread ticket={ticket} me={me} act={act} reload={async()=>{setTicket(await api('tickets/'+ticket.ticket.id))}}/></Modal>}
  </>;
 
- if(view==='customer')return <div className="site">
+ if(view==='customer')return <div className="site customer-site">
   <header className="site-header"><a href="/" aria-label="DRIOZ home"><Logo/></a>
    <nav aria-label="Workspaces">{nav.map(([v,text,Icon,count])=><button className={view===v?'selected':''} key={v} onClick={()=>go(v)}><Icon/>{text}{!!count&&<i/>}</button>)}</nav>
    <button className="identity ghost" style={{color:'#fff'}} onClick={()=>go('account')}><span className="avatar" style={{width:34,height:34,fontSize:12}}>{initials(me.name)}</span><span style={{textAlign:'left'}}>{me.name}<small>{label(me.role)}</small></span></button>

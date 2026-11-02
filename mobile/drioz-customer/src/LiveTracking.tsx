@@ -18,26 +18,46 @@ type Live = {
 export default function LiveTracking({ trip }: { trip: any }) {
   const { t } = useI18n();
   const [live, setLive] = useState<Live | null>(null);
+  const [clock, setClock] = useState(Date.now());
+  const [animatedDriver, setAnimatedDriver] = useState<{lat:number;lng:number}|null>(null);
+  const displayed = useRef<{lat:number;lng:number}|null>(null);
   const map = useRef<MapView>(null);
   useEffect(() => {
-    let active = true;
+    let active = true, pending = false;
     const load = () => {
-      if (AppState.currentState !== "active") return;
+      setClock(Date.now());
+      if (AppState.currentState !== "active" || pending) return;
+      pending = true;
       api(`bookings/${trip.id}/location`)
         .then((r: Live) => {
           if (active) setLive(r);
         })
-        .catch(() => {});
+        .catch(() => {}).finally(() => { pending = false; });
     };
     load();
-    const timer = setInterval(load, 10000);
+    const timer = setInterval(load, 5000);
+    const resume = AppState.addEventListener("change", state => { if (state === "active") load(); });
     return () => {
+      resume.remove();
       active = false;
       clearInterval(timer);
     };
   }, [trip.id, trip.status]);
   const target = live?.target || { lat: trip.pickup_lat, lng: trip.pickup_lng, kind: "pickup" as const };
-  const driver = live?.location;
+  const driver = live?.location && live.location.location_at > clock - 120000 ? live.location : null;
+  useEffect(() => {
+    if (!driver) { displayed.current = null; setAnimatedDriver(null); return; }
+    const from = displayed.current || driver, began = Date.now(); let frame = 0, last = 0;
+    const step = () => {
+      const elapsed = Date.now() - began, t = Math.min(1, elapsed / 1200), easing = 1 - (1 - t) ** 3;
+      if (elapsed - last >= 50 || t === 1) {
+        last = elapsed; const point = {lat:from.lat + (driver.lat - from.lat) * easing,lng:from.lng + (driver.lng - from.lng) * easing};
+        displayed.current = point; setAnimatedDriver(point);
+      }
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step); return () => cancelAnimationFrame(frame);
+  }, [driver?.lat, driver?.lng, !!driver]);
   useEffect(() => {
     if (!map.current) return;
     const coords = [{ latitude: target.lat, longitude: target.lng }];
@@ -67,8 +87,8 @@ export default function LiveTracking({ trip }: { trip: any }) {
           title={target.kind === "pickup" ? t("track.pickupPoint") : t("track.destinationPoint")}
           pinColor={target.kind === "pickup" ? colors.brandStrong : colors.ink}
         />
-        {driver ? (
-          <Marker coordinate={{ latitude: driver.lat, longitude: driver.lng }} title={t("track.yourDriver")} tracksViewChanges={false} anchor={{ x: 0.5, y: 0.5 }}>
+        {animatedDriver && driver ? (
+          <Marker coordinate={{ latitude: animatedDriver.lat, longitude: animatedDriver.lng }} title={t("track.yourDriver")} tracksViewChanges={false} anchor={{ x: 0.5, y: 0.5 }}>
             <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.night, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.brand }}>
               <SteeringWheel size={24} rim="#E9F2EE" hub={colors.night} />
             </View>

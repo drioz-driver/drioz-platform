@@ -36,12 +36,17 @@ export function useWorkspace({ pollMs = 15000, onSignOut }: { pollMs?: number; o
     [data, setData] = useState<any>(null),
     [error, setError] = useState(""),
     [refreshing, setRefreshing] = useState(false);
+  const snapshotRequest = useRef(0);
   const generation = useRef(0),
     mounted = useRef(true);
   const refresh = useCallback(async () => {
-    const current = generation.current;
+    const current = generation.current, request = ++snapshotRequest.current;
     const result = await api("snapshot");
-    if (mounted.current && current === generation.current) setData(result);
+    if (mounted.current && current === generation.current && request === snapshotRequest.current) setData(result);
+  }, []);
+  const applyBooking = useCallback((booking: any) => {
+    ++snapshotRequest.current;
+    setData((current: any) => current && (booking.driver_id === current.me.id || booking.customer_id === current.me.id) ? { ...current, bookings: [booking, ...current.bookings.filter((b: any) => b.id !== booking.id)] } : current);
   }, []);
   useEffect(() => {
     mounted.current = true;
@@ -145,14 +150,14 @@ export function useWorkspace({ pollMs = 15000, onSignOut }: { pollMs?: number; o
       setError(errorText(e, "Unable to sign out"));
     }
   }
-  return { session, initial, data, setData, error, setError, refresh, reload, refreshing, signout };
+  return { applyBooking, session, initial, data, setData, error, setError, refresh, reload, refreshing, signout };
 }
 
 export function Header({ me, badge, onAccount }: { me: any; badge?: string; onAccount: () => void }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 10 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Image source={logoDark} style={{ width: 108, height: 37 }} resizeMode="contain" accessibilityLabel="DRIOZ" />
+        <Image source={logoDark} style={{ width: 108, aspectRatio: 1100 / 378, flexShrink: 0 }} resizeMode="contain" accessibilityLabel="DRIOZ" />
         {badge ? (
           <View style={{ backgroundColor: colors.ink, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
             <Text style={{ color: colors.brand, fontSize: 10, fontWeight: "900", letterSpacing: 1.5 }}>{badge}</Text>

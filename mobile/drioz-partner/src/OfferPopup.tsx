@@ -47,6 +47,7 @@ export default function OfferPopup({
   onDone: () => void;
 }) {
   const t = useT();
+  const actionStarted = useRef(false);
   const remainingMs = () => Math.max(0, offer.expiresAt - (Date.now() + skew));
   const [seconds, setSeconds] = useState(Math.ceil(remainingMs() / 1000));
   const [phase, setPhase] = useState<Phase>("offer");
@@ -99,7 +100,8 @@ export default function OfferPopup({
   }, [seconds, phase]);
 
   async function accept() {
-    if (phase !== "offer") return;
+    if (phase !== "offer" || actionStarted.current) return;
+    actionStarted.current = true;
     setPhase("accepting");
     setError("");
     try {
@@ -118,7 +120,8 @@ export default function OfferPopup({
     }
   }
   async function decline() {
-    if (phase !== "offer") return;
+    if (phase !== "offer" || actionStarted.current) return;
+    actionStarted.current = true;
     setPhase("missed");
     Animated.timing(enter, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => onDone());
     onDecline(offer).catch(() => {});

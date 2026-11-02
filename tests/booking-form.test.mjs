@@ -5,10 +5,11 @@ import {createRequire} from 'node:module';
 import ts from 'typescript';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
+import * as geolocation from '../lib/browser-geolocation.ts';
 const nodeRequire=createRequire(import.meta.url);
 const mapsSource=readFileSync(new URL('../app/maps-address.tsx',import.meta.url),'utf8');
 const mapsCompiled=ts.transpileModule(mapsSource,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const mapsModule={exports:{}};new Function('require','module','exports',mapsCompiled)(nodeRequire,mapsModule,mapsModule.exports);
+const mapsModule={exports:{}};new Function('require','module','exports',mapsCompiled)(name=>name==='@/lib/browser-geolocation'?geolocation:nodeRequire(name),mapsModule,mapsModule.exports);
 // booking-fields also imports the schedule wheel, which imports the pure pickup-wheel helpers.
 const load=(file,resolve)=>{const out=ts.transpileModule(readFileSync(new URL(file,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const m={exports:{}};new Function('require','module','exports',out)(resolve,m,m.exports);return m.exports};
 const pickupWheel=load('../lib/pickup-wheel.ts',nodeRequire);

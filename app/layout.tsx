@@ -1,5 +1,8 @@
 import type {Metadata,Viewport} from 'next';
 import './globals.css';
+import localFont from 'next/font/local';
+const inter=localFont({src:'./fonts/inter-latin.woff2',weight:'400 800',display:'optional',variable:'--font-inter'});
+const display=localFont({src:[{path:'./fonts/instrument-serif-normal.woff2',weight:'400',style:'normal'},{path:'./fonts/instrument-serif-italic.woff2',weight:'400',style:'italic'}],display:'optional',variable:'--font-instrument'});
 export const metadata:Metadata={
  title:{default:'DRIOZ — Your personal driver, anytime',template:'%s · DRIOZ'},
  description:'Book a vetted personal driver for your own car — one way, round trip or outstation. Transparent fares, verified partners and live trip status.',
@@ -13,9 +16,7 @@ export const metadata:Metadata={
 };
 export const viewport:Viewport={themeColor:[{media:'(prefers-color-scheme: light)',color:'#07110e'},{media:'(prefers-color-scheme: dark)',color:'#07110e'}],width:'device-width',initialScale:1,viewportFit:'cover'};
 export default function Layout({children}:{children:React.ReactNode}){
- return <html lang="en"><head>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap"/>
+ return <html lang="en" className={inter.variable+' '+display.variable}><head>
+
  </head><body>{children}</body></html>;
 }

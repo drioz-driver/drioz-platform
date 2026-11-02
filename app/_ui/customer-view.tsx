@@ -1,5 +1,5 @@
 'use client';
-import {ArrowRight,BadgeCheck,Clock,KeyRound,MapPinned,RefreshCw,Repeat,Route,ShieldCheck,Sparkles,Star,Wallet} from 'lucide-react';
+import {ArrowRight,BadgeCheck,Clock,KeyRound,MapPinned,Repeat,Route,ShieldCheck,Sparkles,Star,Wallet} from 'lucide-react';
 import BookingForm from '../booking-form';
 import {Badge,Empty} from './primitives';
 import {TripCard,type TripActions} from './trip-card';
@@ -8,13 +8,14 @@ import {SteeringWheel} from './steering';
 import {useState} from 'react';
 import {BillTo,CustomerTripAfter,LiveTrack} from './customer-trip';
 
-export default function CustomerView({data,me,t,onBook,refresh}:{data:any;me:any;t:(b:any)=>TripActions;onBook:(input:any,total:number,key:string,billTo?:'personal'|'company')=>Promise<void>;refresh:()=>void}){
+export default function CustomerView({data,me,t,onBook}:{data:any;me:any;t:(b:any)=>TripActions;onBook:(input:any,total:number,key:string,billTo?:'personal'|'company')=>Promise<void>;refresh:()=>void}){
  const [billTo,setBillTo]=useState<'personal'|'company'>('personal');
  const mine=data.bookings.filter((b:any)=>b.customer_id===me.id);
  const requests=(data.locationRequests||[]).filter((r:any)=>r.customer_id===me.id&&r.status!=='converted');
  const priced=data.cities.filter((c:any)=>!c.id.startsWith('region-')&&Number(c.base)>0);
  const from=priced.length?Math.min(...priced.map((c:any)=>Number(c.base))):0;
  const live=mine.filter((b:any)=>['requested','assigned','arrived','in_progress'].includes(b.status));
+ const past=mine.filter((b:any)=>!['requested','assigned','arrived','in_progress'].includes(b.status));
  const actions=t({});
  return <>
   <section className="hero">
@@ -82,8 +83,8 @@ export default function CustomerView({data,me,t,onBook,refresh}:{data:any;me:any
   </section>
 
   <section className="section customer-journeys" id="journeys">
-   <div className="section-heading"><div><span className="eyebrow">All in one place</span><h2>Your journeys.</h2></div><button onClick={refresh}><RefreshCw size={15}/>Refresh</button></div>
-   <div className="trip-grid">{mine.length?mine.map((b:any)=><TripCard key={b.id} b={b} mode="customer" t={t(b)} before={<LiveTrack b={b}/>} after={<CustomerTripAfter b={b} t={t(b)}/>}/>):<Empty icon={Star} title="Make room for your first journey." text="Bookings you make will appear here with live status, start codes and fare statements."><a className="primary" href="#book">Plan a journey <ArrowRight size={16}/></a></Empty>}</div>
+   <div className="section-heading"><div><span className="eyebrow">All in one place</span><h2>Your journeys.</h2></div><span className="badge good">Updates automatically</span></div>
+   <div className="trip-grid">{past.length?past.map((b:any)=><TripCard key={b.id} b={b} mode="customer" t={t(b)} before={<LiveTrack b={b}/>} after={<CustomerTripAfter b={b} t={t(b)}/>}/>):live.length?<p className="helper">Completed and cancelled journeys will appear here.</p>:<Empty icon={Star} title="Make room for your first journey." text="Bookings you make will appear here with live status, start codes and fare statements."><a className="primary" href="#book">Plan a journey <ArrowRight size={16}/></a></Empty>}</div>
   </section>
  </>;
 }

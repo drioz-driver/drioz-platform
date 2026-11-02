@@ -227,6 +227,13 @@ export default function BookingScreen({
       {coverage?.message ? (
         <Banner tone={coverage.status === "available" ? "good" : "warn"} text={coverage.message} />
       ) : null}
+      {coverage?.status === "quote_required" && pickup && (type === "return" || drop) ? (
+        <Button busy={busy} title={t("book.localQuote")} onPress={async () => {
+          setBusy(true);setMessage("");
+          try { const response=await api("trip-enquiries",{trip:input(coverage.cityId||"worldwide"),location:coverage.regionName||pickup.label.slice(0,120),key:key.current});setMessage(response.message||"Local-price quote requested. Check Support for the price and currency."); }
+          catch(error){setMessage(errorText(error,"Unable to request quote"));}finally{setBusy(false);}
+        }}/>
+      ) : null}
       {loading && !result && pickup ? <Text style={[s.muted, { textAlign: "center" }]}>{t("book.checking")}</Text> : null}
       {result && served ? (
         <Card dark>

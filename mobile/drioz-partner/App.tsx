@@ -31,7 +31,7 @@ import OfferPopup, { type Offer } from "./src/OfferPopup";
 import WalletScreen from "./src/WalletScreen";
 import AccountExtras from "./src/AccountExtras";
 import { useOffers } from "./src/useOffers";
-import { stopTracking } from "./src/location";
+import { startTracking, resumeTracking, stopTracking } from "./src/location";
 import { prepareAlerts } from "./src/alerts";
 import { onOfferTapped, registerPush, unregisterPush } from "./src/push";
 import { I18nProvider, useT } from "./src/i18n";
@@ -53,6 +53,9 @@ function Partner() {
   const approvedOnline = d?.verification === "approved" && !!d?.online;
   const hasActiveTrip = !!w.data?.bookings?.some((b: any) => b.driver_id === w.data.me.id && ["assigned", "arrived", "in_progress"].includes(b.status));
   const offers = useOffers({ enabled: !!w.session && approvedOnline && !hasActiveTrip });
+  useEffect(() => {
+    if (hasActiveTrip) resumeTracking().catch(() => {});
+  }, [hasActiveTrip]);
   useEffect(() => {
     if (approvedOnline) prepareAlerts().catch(() => {});
   }, [approvedOnline]);
@@ -146,9 +149,12 @@ function Partner() {
           offer={offers.offer as Offer}
           skew={offers.skew}
           onAccept={async (o) => {
-            await api(`bookings/${o.bookingId}/assign`, { driverId: w.data.me.id, offerId: o.id });
-            await w.refresh();
+            const receipt = await api(`bookings/${o.bookingId}/assign`, { driverId: w.data.me.id, offerId: o.id });
+            offers.markAccepted(o);
+            w.applyBooking(receipt.booking);
             setTab("home");
+            void w.refresh().catch(() => setToast("Ride accepted. The dashboard will reconnect automatically."));
+            void startTracking().catch(() => setToast("Ride accepted. Enable location sharing so your customer can follow your arrival."));
           }}
           onDecline={async (o) => {
             await api("driver/offers/pass", { offerId: o.id });

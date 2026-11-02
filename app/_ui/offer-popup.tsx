@@ -11,7 +11,7 @@ type Phase='offer'|'accepting'|'won'|'missed'|'leaving';
 export default function OfferPopup({offer,skew,onAccept,onDecline,onMissed,onDone}:{offer:Offer;skew:number;onAccept:(o:Offer)=>Promise<void>;onDecline:(o:Offer)=>Promise<void>;onMissed:(o:Offer)=>void;onDone:()=>void}){
  const remaining=()=>Math.max(0,offer.expiresAt-(Date.now()+skew));
  const [left,setLeft]=useState(remaining()),[phase,setPhase]=useState<Phase>('offer'),[error,setError]=useState('');
- const startLeft=useRef(remaining());
+ const startLeft=useRef(remaining()),actionStarted=useRef(false);
  const seconds=Math.ceil(left/1000);
  useEffect(()=>{const t=setInterval(()=>setLeft(remaining()),250);try{navigator.vibrate?.([300,120,300])}catch{};return()=>clearInterval(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -20,8 +20,8 @@ export default function OfferPopup({offer,skew,onAccept,onDecline,onMissed,onDon
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[left,phase]);
  const close=(after=0)=>setTimeout(()=>{setPhase('leaving');setTimeout(onDone,320)},after);
- async function accept(){if(phase!=='offer')return;setPhase('accepting');try{await onAccept(offer);setPhase('won');close(1500)}catch(e){setError(errorMessage(e,'This ride is no longer available'));setPhase('missed');close(1800)}}
- async function decline(){if(phase!=='offer')return;setPhase('leaving');onDecline(offer).catch(()=>{});setTimeout(onDone,320)}
+ async function accept(){if(phase!=='offer'||actionStarted.current)return;actionStarted.current=true;setPhase('accepting');try{await onAccept(offer);setPhase('won');close(1500)}catch(e){setError(errorMessage(e,'This ride is no longer available'));setPhase('missed');close(1800)}}
+ async function decline(){if(phase!=='offer'||actionStarted.current)return;actionStarted.current=true;setPhase('leaving');onDecline(offer).catch(()=>{});setTimeout(onDone,320)}
  const urgent=seconds<=Math.min(8,Math.ceil(offer.seconds*0.4))&&phase==='offer';
  const chips=[offer.pickupDistanceKm!=null?`${offer.pickupDistanceKm} km to pickup`:null,tripTypeName(offer.tripType)+(offer.hours?` · ${offer.hours} hrs`:''),offer.transmission,offer.vehicleCategory,offer.scheduledAt?new Date(offer.scheduledAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'Pickup now'].filter(Boolean) as string[];
  return <div className={'offer-backdrop'+(phase==='leaving'?' leaving':'')} role="dialog" aria-modal="true" aria-label={`New ride request, ${fmt(offer.partnerFare)}`}>

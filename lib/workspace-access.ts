@@ -13,7 +13,7 @@ export function canUseOperations(role:string){return ['admin','operator','financ
 /** Which portal an account belongs on when it lands on the other one. */
 export function homePortal(role:string):Portal{return role==='driver'?'partner':'customer'}
 export function allowedWorkspace(requested:string,role:string,_hasDriver:boolean,portal:Portal='customer'){
- if(portal==='partner')return partnerViews.includes(requested)?requested:'driver';
+ if(portal==='partner')return canUsePartner(role,_hasDriver)?(partnerViews.includes(requested)?requested:'driver'):'customer';
  if(requested==='admin')return canUseOperations(role)?'admin':'customer';
  return customerViews.includes(requested)?requested:'customer';
 }

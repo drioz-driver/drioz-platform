@@ -1,14 +1,16 @@
 'use client';
+import {localMoney} from '@/lib/local-money';
 import {useEffect,useRef,useState} from 'react';
 import {X} from 'lucide-react';
 import {CountdownWheel,SteeringStrip,SteeringWheel} from './steering';
 import {errorMessage,fmt,tripTypeName} from './client';
 
-export type Offer={id:string;bookingId:string;round:number;expiresAt:number;seconds:number;pickup:string;destination:string;tripType:string;transmission:string;scheduledAt:number|null;partnerFare:number;hours:number|null;vehicleCategory:string|null;pickupDistanceKm:number|null};
+export type Offer={localPricing?:any;id:string;bookingId:string;round:number;expiresAt:number;seconds:number;pickup:string;destination:string;tripType:string;transmission:string;scheduledAt:number|null;partnerFare:number;hours:number|null;vehicleCategory:string|null;pickupDistanceKm:number|null};
 type Phase='offer'|'accepting'|'won'|'missed'|'leaving';
 
 /** Web version of the partner ride-offer popup (same behaviour as DRIOZ Partner on mobile). */
 export default function OfferPopup({offer,skew,onAccept,onDecline,onMissed,onDone}:{offer:Offer;skew:number;onAccept:(o:Offer)=>Promise<void>;onDecline:(o:Offer)=>Promise<void>;onMissed:(o:Offer)=>void;onDone:()=>void}){
+ const fmt=(n:number)=>localMoney(n,offer);
  const remaining=()=>Math.max(0,offer.expiresAt-(Date.now()+skew));
  const [left,setLeft]=useState(remaining()),[phase,setPhase]=useState<Phase>('offer'),[error,setError]=useState('');
  const startLeft=useRef(remaining()),actionStarted=useRef(false);

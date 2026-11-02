@@ -1,10 +1,11 @@
+import {zonedTimestamp} from './pickup-wheel.ts';
 export function scheduledPickup(f:FormData){
  const scheduled=f.get('timing')==='schedule'||f.get('tripType')==='outstation';
  if(!scheduled)return null;
  const date=String(f.get('pickupDate')||''),time=String(f.get('pickupTime')||'');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw Error('Choose a pickup date and time.');
- const value=Date.parse(date+'T'+time+':00+05:30');
- if(!Number.isFinite(value)||new Date(value+19800000).toISOString().slice(0,10)!==date)throw Error('Choose a valid pickup date and time.');
+ const value=zonedTimestamp(date,time,String(f.get('pickupTimeZone')||'Asia/Kolkata'));
+ if(!Number.isFinite(value))throw Error('Choose a valid pickup date and time.');
  if(value<=Date.now())throw Error('Choose a pickup time in the future.');
  return value;
 }

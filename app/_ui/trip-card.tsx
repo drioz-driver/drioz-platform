@@ -1,4 +1,5 @@
 'use client';
+import {localMoney} from '@/lib/local-money';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Calendar,Car,Clock,Cog,FileText,KeyRound,LocateFixed,Navigation,Share2,Star,UserRound,Zap} from 'lucide-react';
 import {Badge,Field,Form} from './primitives';
@@ -44,7 +45,7 @@ export function TripRoute({b}:{b:any}){
  * default action row for that mode, and `after` renders below the actions.
  */
 export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:TripActions;before?:ReactNode;actions?:ReactNode;after?:ReactNode}){
- const extras=tripExtras(b);
+ const extras=tripExtras(b);const fmt=(n:number)=>localMoney(n,b.breakdown);
  const live=['assigned','arrived','in_progress'].includes(b.status);
  const eligible=(t.drivers||[]).filter((d:any)=>d.verification==='approved'&&d.online&&d.city_id===b.city_id&&!d.disabled);
  return <article className="trip">
@@ -52,6 +53,7 @@ export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:
   {mode==='customer'&&b.status==='requested'&&<div className="finding"><SearchingWheel size={56}/><strong>Finding your driver…</strong><span>Offering your ride to the nearest verified driver. We’ll notify you the moment someone accepts.</span></div>}
   {b.status==='in_progress'&&<div className="on-road"><SteeringStrip height={32}/><b><span>ON THE ROAD</span></b></div>}
   {before}
+  {b.status==='completed'&&<p className="helper" role="status">{Number(b.paid_amount)>=Number(b.fare)?'Paid · '+String(b.paid_methods||'payment').replaceAll('_',' '):(()=>{try{return JSON.parse(b.payment_choice||'{}').method==='cash'?'Cash selected · waiting for driver confirmation':'Payment due'}catch{return 'Payment due'}})()}</p>}
   <TripRoute b={b}/>
   <TripMeta b={b} cityName={t.cityName}/>
   <div className="trip-fare">

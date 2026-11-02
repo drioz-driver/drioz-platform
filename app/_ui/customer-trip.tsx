@@ -5,6 +5,7 @@
  */
 import {useEffect,useState} from 'react';
 import dynamic from 'next/dynamic';
+import {localMoney,localPricing} from '@/lib/local-money';
 import {Building2,CreditCard,LocateFixed,MapPin,Phone,Printer,Siren,Star,X} from 'lucide-react';
 import {Form} from './primitives';
 import {api,errorMessage,fmt,tripTypeName,when} from './client';
@@ -68,14 +69,16 @@ export function CustomerTripAfter({b,t}:{b:any;t:TripActions}){
  const live=['assigned','arrived','in_progress'].includes(b.status);
  return <>
   {(live||sosAvailable(b))&&<div className="actions" style={{marginTop:10}}><CustomerSos b={b} t={t}/></div>}
-  {b.status==='completed'&&<div className="actions" style={{marginTop:10}}><a className="button primary" href="/wallet"><CreditCard size={15}/>Pay online or with wallet</a>
+  {b.status==='completed'&&<div className="actions" style={{marginTop:10}}>{Number(b.paid_amount)<Number(b.fare)&&<><button disabled={t.busy} onClick={()=>t.click(`bookings/${b.id}/payment-choice`,{method:'cash'})}>Pay cash to driver</button><a className="button primary" href="/wallet"><CreditCard size={15}/>Pay online or with wallet</a></>}
    <SavePlace t={t} address={b.pickup} lat={b.pickup_lat} lng={b.pickup_lng} what="pickup"/>{b.trip_type!=='return'&&<SavePlace t={t} address={b.destination} lat={b.destination_lat} lng={b.destination_lng} what="drop"/>}</div>}
+  {localPricing(b.breakdown)&&<p className="helper">Cash fare uses the booking’s local currency. Online payments and wallet use INR: {fmt(b.fare)}.</p>}
   <RateDriver b={b} t={t}/>
  </>;
 }
 
 /** Fare statement / GST tax invoice, printable. */
 export function InvoiceView({inv,onClose}:{inv:any;onClose:()=>void}){
+ const fmt=(n:number)=>localMoney(n,inv.breakdown);
  const cgst=inv.taxSplit?.cgst,sgst=inv.taxSplit?.sgst,igst=inv.taxSplit?.igst;
  const paid=(inv.payments||[]).reduce((n:number,p:any)=>n+(p.status==='received'?1:-1)*Number(p.amount||0),0);
  return <div className="invoice-overlay" role="dialog" aria-modal="true" aria-label="Invoice" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>

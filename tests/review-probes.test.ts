@@ -69,10 +69,10 @@ test('worldwide quote regions support driver registration and isolated manual qu
  await rejectsStatus(ops.handle(customer,'regions','POST',{name:'London, UK',center:{lat:51.5,lng:-.12},radiusKm:30}),403);
  const region=await ops.handle(owner,'regions','POST',{name:'London, UK',center:{lat:51.5,lng:-.12},radiusKm:30});assert.ok(region.id.length<=40);
  await ops.handle(driver,'driver/apply','POST',{cityId:region.id,phone:'+447700900123',licence:'LICENSE001',licenceExpiry:'2030-12-31'});
- const coverage={cityId:'worldwide',pickupPoint:{lat:51.5,lng:-.12}};assert.equal((await ops.handle(customer,'coverage','POST',coverage)).status,'quote_required');
+ const coverage={cityId:'worldwide',pickupPoint:{lat:40.4168,lng:-3.7038}};assert.equal((await ops.handle(customer,'coverage','POST',coverage)).status,'quote_required');
  sql.prepare("UPDATE drivers SET verification='approved',online=0 WHERE user_id=?").run(driver.id);assert.equal((await ops.handle(customer,'coverage','POST',coverage)).status,'quote_required');
  assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide'})).status,'needs_location');
- assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:-33.8,lng:151.2}})).status,'quote_required');
+ assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:40.4168,lng:-3.7038}})).status,'quote_required');
  const input={trip:{cityId:region.id,pickup:'London Bridge',destination:'Heathrow Airport',tripType:'one-way',transmission:'manual',scheduledAt:null},location:'London, UK',key:crypto.randomUUID()};
  const enquiry=await ops.handle(customer,'trip-enquiries','POST',input);assert.equal((await ops.handle(customer,'trip-enquiries','POST',input)).id,enquiry.id);assert.equal((sql.prepare('SELECT count(*) AS n FROM tickets').get() as any).n,1);
  await rejectsStatus(ops.handle(other,'tickets/'+enquiry.id,'GET',null),403);const thread=await ops.handle(owner,'tickets/'+enquiry.id,'GET',null);assert.match(thread.messages[0].message,/London Bridge/);assert.match(thread.messages[0].message,/No fare agreed/);

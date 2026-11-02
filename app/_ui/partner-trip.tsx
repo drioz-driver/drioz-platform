@@ -6,6 +6,7 @@
  */
 import {useEffect,useRef,useState} from 'react';
 import {Camera,ClipboardCheck,Flag,MessageSquare,Navigation,Phone,Siren,Star,X} from 'lucide-react';
+import {localPricing,localMoney} from '@/lib/local-money';
 import {Callout,Field,Form,Modal} from './primitives';
 import {errorMessage,fmt} from './client';
 import type {TripActions} from './trip-card';
@@ -112,15 +113,15 @@ export function CompleteModal({b,t,onClose}:{b:any;t:TripActions;onClose:()=>voi
   <h2>Complete journey</h2>
   <p>Confirm only once the trip has ended. Extra hours beyond the package are charged to the customer; tolls and parking you paid are reimbursed in full.</p>
   <Form button={<><Flag size={16}/>Complete journey</>} onSubmit={async f=>{
-   const rupees=(k:string)=>Math.max(0,Math.round(Number(f.get(k)||0)*100));
+   const rupees=(k:string)=>Math.max(0,Math.round(Number(f.get(k)||0)*100*(localPricing(b.breakdown)?.inrPerUnit||1)));
    const payload:any={status:'completed',tolls:rupees('tolls'),parking:rupees('parking')};
    if(hourly)payload.actualHours=Number(f.get('actualHours'));
    const r=await t.act(`bookings/${b.id}/status`,payload);onClose();return r;
   }}>
    {hourly&&<Field title={`Hours used · package ${info.hours} h`} hint="Rounded up per extra hour beyond the package."><input name="actualHours" type="number" step="0.25" min={0} max={200} defaultValue={info.hours} required/></Field>}
    <div className="fields">
-    <Field title="Tolls paid · ₹"><input name="tolls" type="number" step="1" min={0} max={5000} defaultValue={0}/></Field>
-    <Field title="Parking paid · ₹"><input name="parking" type="number" step="1" min={0} max={5000} defaultValue={0}/></Field>
+    <Field title={'Tolls paid · '+(localPricing(b.breakdown)?.currency||'INR')}><input name="tolls" type="number" step="1" min={0} max={5000} defaultValue={0}/></Field>
+    <Field title={'Parking paid · '+(localPricing(b.breakdown)?.currency||'INR')}><input name="parking" type="number" step="1" min={0} max={5000} defaultValue={0}/></Field>
    </div>
   </Form>
  </Modal>;
@@ -191,7 +192,7 @@ export function PartnerTripActions({b,t}:{b:any;t:TripActions}){
    {live&&<a className="button" href={`https://www.google.com/maps/dir/?api=1&destination=${b.status==='in_progress'?`${b.destination_lat},${b.destination_lng}`:`${b.pickup_lat},${b.pickup_lng}`}`} target="_blank" rel="noreferrer"><Navigation size={15}/>{b.status==='in_progress'?'Navigate to destination':'Navigate to pickup'}</a>}
    {sosAvailable(b)&&<SosButton b={b} t={t}/>}
   </div>}
-  {b.status==='completed'&&<RateCustomer b={b} t={t}/>}
+  {b.status==='completed'&&<><RateCustomer b={b} t={t}/>{Number(b.paid_amount)<Number(b.fare)&&(()=>{try{return JSON.parse(b.payment_choice||'{}').method==='cash'}catch{return false}})()&&<button className="primary block" disabled={t.busy} onClick={()=>{if(confirm('Confirm cash received in full: '+localMoney(Number(b.fare)-Number(b.paid_amount||0),b.breakdown)+'?'))t.click(`bookings/${b.id}/cash-received`,{})}}>Received cash</button>}</>}
   {b.status==='cancelled'&&b.cancellation_fee>0&&<p className="helper">Cancellation fee charged to the customer: {fmt(b.cancellation_fee)}. Your share is added to payouts.</p>}
   {check&&<InspectionModal b={b} phase={check} t={t} onClose={()=>setCheck(null)}/>}
   {completing&&<CompleteModal b={b} t={t} onClose={()=>setCompleting(false)}/>}

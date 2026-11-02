@@ -1,3 +1,4 @@
+import {localMoney} from './local-money';
 /** Builds a print-ready GST invoice / fare statement and shares it as a PDF. */
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -14,6 +15,7 @@ const date = (n?: number | null) =>
   n ? new Date(n).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }) : "—";
 
 export function invoiceHtml(inv: any) {
+  const money=(n:number)=>localMoney(n,inv.breakdown);
   const title = inv.taxInvoice ? "Tax invoice" : "Fare statement";
   const rows = (inv.lines || [])
     .map(

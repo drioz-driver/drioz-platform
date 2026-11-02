@@ -16,6 +16,27 @@ async function setup(){
  async function booking(){const id=crypto.randomUUID();await db.prepare("INSERT INTO bookings(id,customer_id,city_id,pickup,destination,pickup_lat,pickup_lng,destination_lat,destination_lng,trip_type,transmission,fare,partner_fare,breakdown,idempotency_key,created_at,updated_at) VALUES(?,'c','hyd','Pickup','Drop',17,78,18,79,'one-way','manual',5000,4000,'{}',?,0,0)").bind(id,id).run();return id}
  return {pg,db,offers,booking,advance:()=>at+=10000,at:()=>at};
 }
+
+test('international chart books automatically with frozen FX, correct statement and confirmed cash once',async()=>{
+ const s=await setup();try{
+  const ops=operations(s.db,null,'owner@example.com','test-secret',undefined,false,{fetcher:async()=>Response.json({base:'AED',quote:'INR',rate:25.9,date:new Date().toISOString().slice(0,10)})});await ops.seed();
+  const customer=await ops.actor({id:'c',email:'c@example.invalid',name:'C'}),driver=await ops.actor({id:'a',email:'a@example.invalid',name:'A'}),other=await ops.actor({id:'b',email:'b@example.invalid',name:'B'});
+  const point={lat:25.2048,lng:55.2708};const coverage=await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:point,pickupRegion:{city:'Dubai',country:'AE'}});assert.equal(coverage.cityId,'intl-dubai');assert.equal(coverage.status,'searching');
+  const trip={cityId:coverage.cityId,pickup:'Dubai test pickup',destination:'Dubai test destination',pickupPoint:point,destinationPoint:{lat:25.21,lng:55.28},tripType:'one-way',transmission:'automatic',scheduledAt:null};
+  const quote=await ops.handle(customer,'quote','POST',trip);assert.equal(quote.localPricing.currency,'AED');assert.equal(quote.localTotal,79);assert.equal(quote.tax,0);
+  const booking=await ops.handle(customer,'bookings','POST',{quoteId:quote.id,key:crypto.randomUUID()});assert.equal(booking.status,'requested');assert.equal(JSON.parse(booking.breakdown).localPricing.inrPerUnit,25.9);
+  await s.db.prepare("UPDATE bookings SET status='completed',driver_id='a' WHERE id=?").bind(booking.id).run();
+  await assert.rejects(ops.handle(customer,`bookings/${booking.id}/cash-received`,'POST',{}),/assigned driver/);
+  await assert.rejects(ops.handle(driver,`bookings/${booking.id}/cash-received`,'POST',{}),/select cash first/);
+  await ops.handle(customer,`bookings/${booking.id}/payment-choice`,'POST',{method:'cash'});
+  await assert.rejects(ops.handle(other,`bookings/${booking.id}/cash-received`,'POST',{}));
+  await ops.handle(driver,`bookings/${booking.id}/cash-received`,'POST',{});const repeat=await ops.handle(driver,`bookings/${booking.id}/cash-received`,'POST',{});assert.equal(repeat.alreadyReceived,true);
+  const payments=await s.db.prepare('SELECT * FROM payments WHERE booking_id=?').bind(booking.id).all();assert.equal(payments.results.length,1);assert.equal(Number(payments.results[0].amount),Number(booking.fare));
+  const snapshot=await ops.handle(driver,'snapshot','GET',{});const shown=snapshot.bookings.find((b:any)=>b.id===booking.id);assert.equal(Number(shown.paid_amount),Number(booking.fare));assert.equal(shown.paid_methods,'cash');
+  const statement=await ops.handle(customer,`bookings/${booking.id}/invoice`,'GET',{});assert.equal(statement.taxInvoice,false);assert.equal(statement.breakdown.localPricing.currency,'AED');assert.equal(statement.total,booking.fare);
+  await assert.rejects(ops.handle(customer,'quote','POST',{...trip,pickupPoint:{lat:17.4,lng:78.4}}),/selected rate chart/);
+ }finally{await s.pg.close()}
+});
 test('exclusive offer expires in 10 seconds, rotates, then can return with a fresh ID',async()=>{const s=await setup();try{
  await s.offers.poll('b');const id=await s.booking();const first=(await s.offers.poll('a')).offers[0];assert.equal(first.id,id);assert.equal(first.expires_at-first.offered_at,10000);assert.equal((await s.offers.poll('b')).offers.length,0);
  s.advance();assert.equal((await s.offers.poll('a')).offers.length,0);const second=(await s.offers.poll('b')).offers[0];assert.notEqual(second.offer_id,first.offer_id);await assert.rejects(claimRideOffer(s.db,id,'a',first.offer_id,s.at()),/expired/);

@@ -1,3 +1,5 @@
+import {zonedTimestamp} from './pickup-wheel';
+import {localMoney} from './local-money';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import * as Crypto from "expo-crypto";
@@ -8,7 +10,7 @@ import SchedulePicker from "./SchedulePicker";
 import { useI18n, type T } from "./i18n";
 
 export type BookingDraft = { key: string; trip: any };
-const placePoint = (p: any): Point => ({ lat: Number(p.lat), lng: Number(p.lng), label: String(p.address), city: "", country: "IN" });
+const placePoint = (p: any): Point => ({ lat: Number(p.lat), lng: Number(p.lng), label: String(p.address), city: "", country: "" });
 
 
 function PlaceChips({ places, title, onPick }: { places: any[]; title: string; onPick: (p: Point) => void }) {
@@ -73,8 +75,8 @@ export default function BookingScreen({
     } catch {}
     const type = ["one-way", "return", "outstation"].includes(trip.trip_type) ? trip.trip_type : "one-way";
     setType(type);
-    setPickup({ lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng), label: String(trip.pickup), city: "", country: "IN" });
-    setDrop(type === "return" ? null : { lat: Number(trip.destination_lat), lng: Number(trip.destination_lng), label: String(trip.destination), city: "", country: "IN" });
+    setPickup({ lat: Number(trip.pickup_lat), lng: Number(trip.pickup_lng), label: String(trip.pickup), city: "", country: "" });
+    setDrop(type === "return" ? null : { lat: Number(trip.destination_lat), lng: Number(trip.destination_lng), label: String(trip.destination), city: "", country: "" });
     if (info.hours) setHours(String(info.hours));
     else setHours(type === "outstation" ? "12" : "2");
     if (info.outstationDirection) setDirection(info.outstationDirection);
@@ -86,8 +88,9 @@ export default function BookingScreen({
   const version = useRef(0),
     key = useRef("");
   const scheduled = timing === "later" || type === "outstation";
-  // Pickup times are always Indian Standard Time, whatever the phone’s time zone.
-  const scheduledAt = scheduled ? (when ? Date.parse(when.replace(" ", "T") + ":00+05:30") : NaN) : null;
+  // Interpret scheduled wall time in the pickup market, regardless of the phone time zone.
+  const [pickupTimeZone,setPickupTimeZone]=useState("Asia/Kolkata");
+  const scheduledAt = scheduled ? (when ? zonedTimestamp(when.split(" ")[0],when.split(" ")[1],pickupTimeZone) : NaN) : null;
   const signature = JSON.stringify({ pickup, drop, type, hours, transmission, vehicle, scheduledAt, direction });
   function input(cityId: string) {
     return {
@@ -125,7 +128,7 @@ export default function BookingScreen({
           ...(priced && !Number.isNaN(scheduledAt) ? { trip: input("") } : {}),
         });
         if (generation !== version.current) return;
-        setCoverage(res.coverage);
+        setCoverage(res.coverage);setPickupTimeZone(res.coverage.timeZone||"Asia/Kolkata");
         if (res.estimate) setResult(res.estimate);
         else if (res.message) setMessage(res.message);
       } catch (e) {
@@ -193,7 +196,7 @@ export default function BookingScreen({
             <Choices value={timing} set={setTiming} values={[{ label: t("book.now"), value: "now" }, { label: t("book.schedule"), value: "later" }]} />
           </>
         )}
-        {scheduled ? <SchedulePicker value={when} onChange={setWhen} /> : null}
+        {scheduled ? <SchedulePicker timeZone={pickupTimeZone} value={when} onChange={setWhen} /> : null}
         {type !== "one-way" && (
           <>
             <Text style={s.label}>{type === "return" ? t("book.package") : t("book.usage")}</Text>
@@ -241,14 +244,14 @@ export default function BookingScreen({
             <Text style={[s.eyebrow, { color: colors.brand, marginBottom: 0 }]}>{t("book.fare")}</Text>
             {cityName ? <Text style={{ color: "#9FB7AE", fontSize: 13 }}>{cityName}</Text> : null}
           </View>
-          <Text style={[s.price, { color: "#fff", fontSize: 40 }]}>{money(result.total)}</Text>
+          <Text style={[s.price, { color: "#fff", fontSize: 40 }]}>{localMoney(result.total,result)}</Text>
           <View style={{ gap: 2 }}>
             {[
               [result.rates ? (result.hours ? t("book.packageFare", { hours: result.hours }) : t("book.baseFare")) : t("book.serviceFare"), result.base, true],
               [t("book.oneWayCharge"), result.oneWayCharge, false],
               [t("book.extraTime", { minutes: result.timeMinutes || 0 }), result.time, false],
-              [t("book.additionalHours"), result.extra, false],
-              [t("book.night"), result.night, false],
+              [result.localPricing?"Distance / local supplements":t("book.additionalHours"), result.extra, false],
+              [result.localPricing?"Time-of-day supplement":t("book.night"), result.night, false],
               [result.surgeLabel || t("book.surge"), result.surge, false],
               [t("book.tax"), result.tax, false],
               [t("book.rounding"), result.rounding, false],
@@ -257,17 +260,17 @@ export default function BookingScreen({
               .map(([label, v]) => (
                 <View key={String(label)} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 }}>
                   <Text style={{ color: "#9FB7AE" }}>{label}</Text>
-                  <Text style={{ color: "#fff", fontWeight: "600" }}>{money(Number(v))}</Text>
+                  <Text style={{ color: "#fff", fontWeight: "600" }}>{localMoney(Number(v),result)}</Text>
                 </View>
               ))}
           </View>
           <Text style={{ color: "#7F978E", fontSize: 12.5, lineHeight: 18 }}>
-            {t("book.note")}
+            {result.localPricing?`${result.pricingNote} Online/wallet: ${money(result.total)}.`:t("book.note")}
           </Text>
           <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
             <Icon name="time-outline" size={15} color={colors.brand} />
             <Text style={{ color: "#CFE0D9", fontSize: 12.5, lineHeight: 18, flex: 1 }}>
-              {Number(result.cancellationFee) > 0 ? t("book.cancelPolicy", { min: result.freeCancelMinutes || 5, fee: money(result.cancellationFee) }) : t("book.cancelFree")}
+              {Number(result.cancellationFee) > 0 ? t("book.cancelPolicy", { min: result.freeCancelMinutes || 5, fee: localMoney(result.cancellationFee,result) }) : t("book.cancelFree")}
             </Text>
           </View>
           {!result.bookingAvailable ? <Banner tone="warn" text={t("book.unavailable")} /> : null}

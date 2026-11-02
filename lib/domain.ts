@@ -1,4 +1,10 @@
 export const cityDefaults=[['hyderabad','Hyderabad',24900,14900],['bengaluru','Bengaluru',29900,17900],['delhi-ncr','Delhi NCR',29900,17900],['mumbai','Mumbai',34900,19900],['visakhapatnam','Visakhapatnam',24900,14900],['vijayawada','Vijayawada',24900,14900]] as const;
+/** Interior city centres provide a bounded fallback when GPS works but address lookup fails. */
+export function gpsPricingCity(point?:{lat:number;lng:number}){
+ if(!point)return undefined;
+ const centres:[string,number,number][]=[['hyderabad',17.385,78.4867],['bengaluru',12.9716,77.5946],['delhi-ncr',28.6139,77.209],['mumbai',19.076,72.8777],['visakhapatnam',17.6868,83.2185],['vijayawada',16.5062,80.648]];
+ return centres.map(([id,lat,lng])=>({id,km:distance(point.lat,point.lng,lat,lng)})).filter(c=>c.km<=60).sort((a,b)=>a.km-b.km)[0]?.id;
+}
 export function assertTransition(from:string,to:string){const allowed:Record<string,string[]>={requested:['assigned','cancelled'],assigned:['arrived','cancelled','requested'],arrived:['in_progress','cancelled','requested'],in_progress:['completed'],completed:[],cancelled:[]};if(!allowed[from]?.includes(to))throw Error('Invalid trip transition');}
 /** Per-city rate card for the time-and-distance model. Empty means the legacy flat model. All amounts in paise. */
 export type RateCard={oneWayCharge?:number;perMinute?:number;perKm?:number;includedMinutes?:number;packages?:Record<string,number>};
@@ -41,7 +47,7 @@ export function overage(rates:any,actualMinutes:number,actualKm?:number|null){
  if(!rates||rates.model!=='time-distance')return null;
  const extraMinutes=Math.max(0,Math.ceil(actualMinutes-Number(rates.includedMinutes||0)));
  const extraKm=actualKm!=null&&rates.includedKm!=null?Math.max(0,Math.ceil(actualKm-Number(rates.includedKm))):0;
- return {extraMinutes,extraKm,extraTime:Math.round(extraMinutes*Number(rates.perMinute||0)/100)*100,extraDistance:Math.round(extraKm*Number(rates.perKm||0)/100)*100};
+ return {extraMinutes,extraKm,extraTime:rates.local?Math.round(extraMinutes*Number(rates.perMinute||0)):Math.round(extraMinutes*Number(rates.perMinute||0)/100)*100,extraDistance:Math.round(extraKm*Number(rates.perKm||0)/100)*100};
 }
 /** Highest active surge rule matching the pickup time (IST day-of-week bitmask, minutes since midnight; windows may wrap past midnight). */
 export function surgeFor(rules:any[],at:number){const ist=new Date(at+19800000);const day=ist.getUTCDay(),minute=ist.getUTCHours()*60+ist.getUTCMinutes();let best:{label:string;bps:number}|null=null;for(const r of rules){if(!Number(r.active))continue;const prevDay=(day+6)%7;const start=Number(r.start_min),end=Number(r.end_min);const inWindow=start<=end?(Number(r.days)&(1<<day))&&minute>=start&&minute<end:((Number(r.days)&(1<<day))&&minute>=start)||((Number(r.days)&(1<<prevDay))&&minute<end);if(inWindow&&(!best||Number(r.multiplier_bps)>best.bps))best={label:String(r.label),bps:Number(r.multiplier_bps)}}return best}

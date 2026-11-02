@@ -1,3 +1,4 @@
+import {localMoney} from './local-money';
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Pressable, Text, View, Vibration } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,6 +9,7 @@ import { CountdownWheel, SteeringStrip, SteeringWheel } from "./Steering";
 import { useT } from "./i18n";
 
 export type Offer = {
+  localPricing?:any;
   id: string;
   bookingId: string;
   round: number;
@@ -146,7 +148,7 @@ export default function OfferPopup({
       <View style={{ flex: 1, justifyContent: "flex-end", padding: 12, paddingBottom: 28 }}>
         <Animated.View
           accessibilityViewIsModal
-          accessibilityLabel={`New ride request, ${money(offer.partnerFare)}, ${seconds} seconds to accept`}
+          accessibilityLabel={`New ride request, ${localMoney(offer.partnerFare,offer)}, ${seconds} seconds to accept`}
           style={{
             backgroundColor: colors.night2,
             borderRadius: 30,
@@ -183,7 +185,7 @@ export default function OfferPopup({
               )}
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ color: "#9FB7AE", fontSize: 13 }}>{phase === "won" ? t("offer.rideConfirmed") : t("offer.earnings")}</Text>
-                <Text style={{ color: "#fff", fontSize: 38, fontWeight: "900", letterSpacing: -1, fontVariant: ["tabular-nums"] }}>{money(offer.partnerFare)}</Text>
+                <Text style={{ color: "#fff", fontSize: 38, fontWeight: "900", letterSpacing: -1, fontVariant: ["tabular-nums"] }}>{localMoney(offer.partnerFare,offer)}</Text>
                 {offer.round > 1 && phase === "offer" ? <Text style={{ color: colors.brand, fontSize: 12.5, fontWeight: "700" }}>{t("offer.again")}</Text> : null}
                 {phase === "won" ? <Text style={{ color: colors.brand, fontSize: 16, fontWeight: "800" }}>{t("offer.yours")}</Text> : null}
               </View>

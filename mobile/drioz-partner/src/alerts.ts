@@ -1,3 +1,4 @@
+import {localMoney} from './local-money';
 import { AppState, Platform, Vibration } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
@@ -42,7 +43,7 @@ export async function alertOffer(offer: { id: string; partnerFare: number; picku
   if ((await SecureStore.getItemAsync(PUSH_FLAG)) === "yes") return; // server push already delivered it
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: `New ride · ${money(offer.partnerFare)}`,
+      title: `New ride · ${localMoney(offer.partnerFare,offer)}`,
       body: `Pickup: ${offer.pickup}. Open DRIOZ Partner to accept within ${offer.seconds}s.`,
       data: { type: "offer", offerId: offer.id },
       sound: "default",

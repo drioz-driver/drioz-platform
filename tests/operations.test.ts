@@ -68,10 +68,10 @@ test('worldwide quote regions support driver registration and isolated manual qu
  await rejectsStatus(ops.handle(customer,'regions','POST',{name:'London, UK',center:{lat:51.5,lng:-.12},radiusKm:30}),403);
  const region=await ops.handle(owner,'regions','POST',{name:'London, UK',center:{lat:51.5,lng:-.12},radiusKm:30});assert.ok(region.id.length<=40);
  await ops.handle(driver,'driver/apply','POST',{cityId:region.id,phone:'+447700900123',licence:'LICENSE001',licenceExpiry:'2030-12-31'});
- const coverage={cityId:'worldwide',pickupPoint:{lat:51.5,lng:-.12}};assert.equal((await ops.handle(customer,'coverage','POST',coverage)).status,'quote_required');
+ const coverage={cityId:'worldwide',pickupPoint:{lat:40.4168,lng:-3.7038}};assert.equal((await ops.handle(customer,'coverage','POST',coverage)).status,'quote_required');
  sql.prepare("UPDATE drivers SET verification='approved',online=0 WHERE user_id=?").run(driver.id);assert.equal((await ops.handle(customer,'coverage','POST',coverage)).status,'quote_required');
  assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide'})).status,'needs_location');
- assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:-33.8,lng:151.2}})).status,'quote_required');
+ assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:40.4168,lng:-3.7038}})).status,'quote_required');
  const input={trip:{cityId:region.id,pickup:'London Bridge',destination:'Heathrow Airport',tripType:'one-way',transmission:'manual',scheduledAt:null},location:'London, UK',key:crypto.randomUUID()};
  const enquiry=await ops.handle(customer,'trip-enquiries','POST',input);assert.equal((await ops.handle(customer,'trip-enquiries','POST',input)).id,enquiry.id);assert.equal((sql.prepare('SELECT count(*) AS n FROM tickets').get() as any).n,1);
  await rejectsStatus(ops.handle(other,'tickets/'+enquiry.id,'GET',null),403);const thread=await ops.handle(owner,'tickets/'+enquiry.id,'GET',null);assert.match(thread.messages[0].message,/London Bridge/);assert.match(thread.messages[0].message,/No fare agreed/);
@@ -82,6 +82,8 @@ test('pickup city detects online Hyderabad driver even with no city service zone
  const {ops,sql}=setup();const {customer,driver}=await actors(ops);await ops.seed();await approve(sql,driver);
  const result=await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:17.44,lng:78.39},pickupRegion:{city:'Hyderabad',country:'IN'}});
  assert.equal(result.cityId,'hyderabad');assert.equal(result.status,'searching');assert.equal(result.nearby,false);assert.match(result.message,/keep looking/);
+ const gpsOnly=await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:17.406,lng:78.4514}});
+ assert.equal(gpsOnly.cityId,'hyderabad');assert.equal(gpsOnly.status,'searching');
  assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide'})).message,'');
  const foreign=await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:17.44,lng:78.39},pickupRegion:{city:'Hyderabad',country:'PK'}});assert.equal(foreign.status,'quote_required');
  sql.prepare('UPDATE drivers SET lat=?,lng=?,location_at=? WHERE user_id=?').run(17.44,78.39,Date.now(),driver.id);
@@ -157,5 +159,5 @@ test('an unlisted Indian pickup gets a priced request while foreign locations re
  const c=await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:13.6,lng:79.4},pickupRegion:{city:'Tirupati',country:'IN'}});assert.equal(c.cityId,'india');assert.equal(c.status,'searching');
  const input={...request,cityId:c.cityId,pickupPoint:{lat:13.6,lng:79.4},destinationPoint:{lat:13.65,lng:79.45}};
  const quote=await ops.handle(customer,'quote','POST',input);const b=await ops.handle(customer,'bookings','POST',{quoteId:quote.id,key:crypto.randomUUID()});assert.equal(b.status,'requested');
- assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:51.5,lng:-.12},pickupRegion:{city:'London',country:'GB'}})).status,'quote_required');
+ assert.equal((await ops.handle(customer,'coverage','POST',{cityId:'worldwide',pickupPoint:{lat:51.5,lng:-.12},pickupRegion:{city:'London',country:'GB'}})).status,'searching');
 });

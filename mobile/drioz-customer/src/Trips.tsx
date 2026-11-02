@@ -1,3 +1,4 @@
+import {localMoney,localPricing} from './local-money';
 import React, { useEffect, useState } from "react";
 import { View, Text, Alert, Share, Linking } from "react-native";
 import * as Location from "expo-location";
@@ -32,6 +33,7 @@ export function Trip({
   onPay?: () => void;
 }) {
   const { t } = useI18n();
+  const money=(n:number)=>localMoney(n,trip.breakdown);
   const [expiresAt, setExpiresAt] = useState(0), [clock, setClock] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const [startCode, setStartCode] = useState(""),
@@ -224,7 +226,8 @@ export function Trip({
         {active || trip.status === "requested" ? (
           <Button small secondary icon="share-social-outline" title={t("trip.share")} disabled={busy} onPress={shareLive} />
         ) : null}
-        {trip.status === "completed" && onPay ? <Button small icon="card-outline" title={t("trip.pay")} onPress={onPay} /> : null}
+        {trip.status === "completed" && Number(trip.paid_amount)<Number(trip.fare) ? <Button small secondary title="Pay cash to driver" disabled={busy} onPress={()=>act(`bookings/${trip.id}/payment-choice`,{method:'cash'})}/> : null}
+        {trip.status === "completed" && onPay && Number(trip.paid_amount)<Number(trip.fare) ? <Button small icon="card-outline" title={t("trip.pay")} onPress={onPay} /> : null}
         {(trip.status === "completed" || trip.status === "cancelled") && onBookAgain ? (
           <Button small secondary icon="repeat" title={t("trip.bookAgain")} onPress={() => onBookAgain(trip)} />
         ) : null}
@@ -232,6 +235,8 @@ export function Trip({
           <Button small variant="danger" title={t("trip.cancel")} disabled={busy} onPress={cancel} />
         ) : null}
       </View>
+      {trip.status==='completed'&&<Text style={s.muted}>{Number(trip.paid_amount)>=Number(trip.fare)?'Paid · '+String(trip.paid_methods||'payment'):parse(trip.payment_choice).method==='cash'?'Cash selected · waiting for driver confirmation':'Payment due'}</Text>}
+      {localPricing(trip.breakdown)&&<Text style={s.muted}>Cash: {money(trip.fare)}. Online/wallet settlement: {localMoney(trip.fare)}.</Text>}
       {statement ? (
         <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.line }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>

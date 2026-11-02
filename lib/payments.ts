@@ -29,7 +29,8 @@ export function paymentService(db:any,config:PaymentConfig,provider?:any){
   await q(database,"INSERT INTO wallet_entries(id,user_id,mode,amount,kind,booking_id,request_key,created_at) VALUES(?,?,?,?,'trip_payment',?,?,?)",entry,user,mode,-amount,b.id,requestKey,now).run();
   await q(database,'INSERT INTO gateway_payments(id,customer_id,mode,booking_id,amount,wallet_entry_id,created_at) VALUES(?,?,?,?,?,?,?)',payment,user,mode,b.id,amount,entry,now).run();
   // Test charges must never reconcile real receipts or fund partner payouts.
-  if(mode==='live')await q(database,"INSERT INTO payments(id,booking_id,amount,method,reference,status,created_at) VALUES(?,?,?,'wallet',?,'received',?)",uuid(),b.id,amount,'wallet:'+entry,now).run();
+  if(mode==='live')await q(database,"INSERT INTO payments(id,booking_id,amount,method,reference,status,created_at) VALUES(?,?,?,?,?,'received',?)",uuid(),b.id,amount,requestKey.startsWith('order:')?'online':'wallet','wallet:'+entry,now).run();
+  await q(database,'UPDATE bookings SET updated_at=? WHERE id=?',now,b.id).run();
  }
  async function wallet(actor:Actor){const driver=await driverWallet(db,mode,config).summary(actor);return atomic(async database=>{const balance=await one(database,'SELECT balance FROM wallet_accounts WHERE user_id=? AND mode=?',actor.id,mode);const records=await all(database,'SELECT id,amount,kind,booking_id,created_at FROM wallet_entries WHERE user_id=? AND mode=? ORDER BY created_at DESC LIMIT 50',actor.id,mode);const bookings=await all(database,"SELECT id,pickup,destination,fare,status FROM bookings WHERE customer_id=? AND status<>'cancelled' ORDER BY updated_at DESC LIMIT 50",actor.id);const payable=[];for(const b of bookings)payable.push({...b,due:await due(database,b)});return {mode,enabled,driver,balance:Number(balance?.balance||0),currency:'INR',entries:records,bookings:payable}})}
  async function create(actor:Actor,raw:unknown){

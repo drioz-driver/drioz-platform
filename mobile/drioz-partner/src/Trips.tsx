@@ -1,3 +1,4 @@
+import {localMoney,localPricing} from './local-money';
 import React, { useState } from "react";
 import { View, Text, Alert, Linking, Modal, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,6 +15,8 @@ const rupeesToPaise = (v: string) => Math.max(0, Math.round(Number(v || 0) * 100
 /** Partner trip card: arrival → car check → start code → after-trip check → complete with extras → rate. */
 export function Trip({ trip, refresh }: { trip: any; refresh: () => Promise<void> }) {
   const t = useT();
+  const money=(n:number)=>localMoney(n,trip.breakdown);
+  const cashChoice=(()=>{try{return JSON.parse(trip.payment_choice||"{}").method==='cash'}catch{return false}})();
   const [pin, setPin] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -248,6 +251,7 @@ export function Trip({ trip, refresh }: { trip: any; refresh: () => Promise<void
         ))}
 
       {notice ? <Banner tone="good" text={notice} onClose={() => setNotice("")} /> : null}
+      {trip.status==='completed'&&<><Text style={s.muted}>{Number(trip.paid_amount)>=Number(trip.fare)?'Paid · '+String(trip.paid_methods||'payment'):cashChoice?'Cash selected · awaiting your confirmation':'Payment due'}</Text>{cashChoice&&Number(trip.paid_amount)<Number(trip.fare)&&<Button title="Received cash" disabled={busy} onPress={()=>Alert.alert('Confirm cash received',`Have you received ${money(Number(trip.fare)-Number(trip.paid_amount||0))} in full?`,[{text:'Cancel',style:'cancel'},{text:'Received cash',onPress:()=>{void act(`bookings/${trip.id}/cash-received`,{})}}])}/>}</>}
       {error ? <Banner text={error} onClose={() => setError("")} /> : null}
 
       <Inspection
@@ -270,14 +274,14 @@ export function Trip({ trip, refresh }: { trip: any; refresh: () => Promise<void
               {trip.trip_type !== "one-way" && packageHours ? (
                 <Field label={t("done.hours")} value={hours} onChange={(v) => setHours(v.replace(/[^\d.]/g, "").slice(0, 5))} keyboard="numeric" hint={t("done.package", { n: packageHours })} />
               ) : null}
-              <Field label={t("done.tolls")} value={tolls} onChange={(v) => setTolls(v.replace(/[^\d.]/g, "").slice(0, 7))} keyboard="numeric" placeholder="0" />
-              <Field label={t("done.parking")} value={parking} onChange={(v) => setParking(v.replace(/[^\d.]/g, "").slice(0, 7))} keyboard="numeric" placeholder="0" />
+              <Field label={localPricing(trip.breakdown)?"Tolls paid · "+localPricing(trip.breakdown)!.currency:t("done.tolls")} value={tolls} onChange={(v) => setTolls(v.replace(/[^\d.]/g, "").slice(0, 7))} keyboard="numeric" placeholder="0" />
+              <Field label={localPricing(trip.breakdown)?"Parking paid · "+localPricing(trip.breakdown)!.currency:t("done.parking")} value={parking} onChange={(v) => setParking(v.replace(/[^\d.]/g, "").slice(0, 7))} keyboard="numeric" placeholder="0" />
               <Button
                 busy={busy}
                 icon="checkmark-done"
                 title={t("done.confirm")}
                 onPress={async () => {
-                  const body: any = { status: "completed", tolls: rupeesToPaise(tolls), parking: rupeesToPaise(parking) };
+                  const multiplier=localPricing(trip.breakdown)?.inrPerUnit||1;const body: any = { status: "completed", tolls: Math.round(rupeesToPaise(tolls)*multiplier), parking: Math.round(rupeesToPaise(parking)*multiplier) };
                   if (trip.trip_type !== "one-way" && packageHours && hours) body.actualHours = Number(hours);
                   const r = await act(`bookings/${trip.id}/status`, body);
                   if (r) setFinishing(false);

@@ -18,7 +18,7 @@ function toOffer(raw: any, seenBookings: Set<string>): Offer {
     tripType: raw.trip_type,
     transmission: raw.transmission,
     scheduledAt: raw.scheduled_at ? Number(raw.scheduled_at) : null,
-    partnerFare: Number(raw.partner_fare),
+    partnerFare: Number(raw.partner_fare),localPricing:raw.localPricing,
     hours: raw.hours ?? null,
     vehicleCategory: raw.vehicleCategory ?? null,
     pickupDistanceKm: raw.pickupDistanceKm ?? null,

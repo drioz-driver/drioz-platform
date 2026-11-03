@@ -57,6 +57,7 @@ export default function DriverView({data,me,section,setSection,t,gps,position,sh
    </div>}
    <div style={{marginTop:20}}><DriverLocationMap position={position} sharing={gps}/></div>
   </>}
+  {section==='overview'&&partnerTrips.some((b:any)=>b.status==='cancelled')&&<section className="panel" aria-label="Cancelled rides"><h2>Cancelled rides</h2><p>Your cancelled bookings stay in trip history.</p>{partnerTrips.filter((b:any)=>b.status==='cancelled').slice(0,1).map((b:any)=><TripCard key={b.id} b={b} mode="partner" t={t(b)} actions={<PartnerTripActions b={b} t={t(b)}/>}/>)}<button onClick={()=>setSection('trips')}>View ride history</button></section>}
   {section==='trips'&&<PartnerTrips trips={partnerTrips} t={t}/>}
   {section==='planner'&&<Planner plans={data.plans||[]} act={base.act}/>}
   {section==='earnings'&&<div className="two-col"><section className="panel"><span className="eyebrow">Partner earnings</span><div className="ledger-total">{fmt(earnings)}</div><p>Earned from {completed.length} completed trips. This month {fmt(data.earnings?.month||0)} across {data.earnings?.monthTrips||0} trips. Rides paid through the driver wallet settle in <a href="/wallet">Wallet</a>; withdraw to your bank from <a href="/driver-finance">Bank & transfers</a>.</p><div className="metrics" style={{gridTemplateColumns:'1fr 1fr',marginBottom:0}}><Metric icon={BadgeCheck} title="Paid out" value={fmt(paid)}/><Metric icon={IndianRupee} title="Pending" value={fmt(Math.max(0,earnings-paid))}/></div></section>
@@ -84,10 +85,10 @@ export default function DriverView({data,me,section,setSection,t,gps,position,sh
 }
 
 function PartnerTrips({trips,t}:{trips:any[];t:(b:any)=>TripActions}){
- const [filter,setFilter]=useState<'current'|'completed'|'all'>('current');
- const list=trips.filter((b:any)=>filter==='all'||(filter==='completed'?b.status==='completed':['assigned','arrived','in_progress'].includes(b.status)));
+ const [filter,setFilter]=useState<'current'|'completed'|'cancelled'|'all'>('current');
+ const list=trips.filter((b:any)=>filter==='all'||(filter==='completed'||filter==='cancelled'?b.status===filter:['assigned','arrived','in_progress'].includes(b.status)));
  return <>
-  <div className="filter-bar" role="group" aria-label="Filter rides">{(['current','completed','all'] as const).map(f=><button key={f} aria-pressed={filter===f} className={filter===f?'selected':''} onClick={()=>setFilter(f)}>{f==='current'?'Active':f==='completed'?'Completed':'All rides'}</button>)}</div>
+  <div className="filter-bar" role="group" aria-label="Filter rides">{(['current','completed','cancelled','all'] as const).map(f=><button key={f} aria-pressed={filter===f} className={filter===f?'selected':''} onClick={()=>setFilter(f)}>{f==='current'?'Active':f==='completed'?'Completed':f==='cancelled'?'Cancelled':'All rides'}</button>)}</div>
   <div className="trip-grid">{list.length?list.map((b:any)=><TripCard key={b.id} b={b} mode="partner" t={t(b)} actions={<PartnerTripActions b={b} t={t(b)}/>}/>):<Empty icon={Route} title={filter==='current'?'No active rides.':'No journeys here yet.'} text={filter==='current'?'Accepted rides appear here. Choose Completed to see past journeys.':'Your journeys will appear here once they match this filter.'}/>}</div>
  </>;
 }

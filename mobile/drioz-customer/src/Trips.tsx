@@ -126,7 +126,7 @@ export function Trip({
     <Card>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <Text style={[s.label, { marginBottom: 0, letterSpacing: 1 }]}>DR-{trip.id.slice(0, 8).toUpperCase()}</Text>
-        <Badge value={t("status." + trip.status)} tone={toneFor(trip.status)} />
+        <Badge value={trip.status === "no_driver" ? "No driver found" : t("status." + trip.status)} tone={toneFor(trip.status)} />
       </View>
       {trip.status === "requested" ? (
         <View style={{ backgroundColor: colors.night, borderRadius: 18, alignItems: "center", paddingBottom: 14, overflow: "hidden" }}>

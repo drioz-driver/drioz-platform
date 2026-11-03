@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Text, View } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
+import {documentUploadDetails} from "./document-upload";
 import { api } from "./api";
 import { Banner, Button, Card, Choices, Field, colors, errorText, s } from "./ui";
 import { languages, useLang, useT, type Lang } from "./i18n";
@@ -9,6 +11,8 @@ export default function AccountExtras({ data, refresh, onDeleted }: { data: any;
   const t = useT();
   const { lang, setLang } = useLang();
   const d = data.driver;
+  async function uploadPhoto(){await run(async()=>{const result=await DocumentPicker.getDocumentAsync({type:['image/jpeg','image/png'],copyToCacheDirectory:true,multiple:false});if(result.canceled)return;const file=result.assets?.[0];if(!file)throw Error('Choose a photo.');const details=documentUploadDetails(file);const form=new FormData();form.append('kind','profile_photo');if(file.file)form.append('file',file.file);else form.append('file',{uri:file.uri,...details} as any);await api('documents',form);await refresh();setNotice('Photo submitted for admin verification.');});}
+
   const [phone, setPhone] = useState(data.me.phone || d?.phone || "");
   const [confirm, setConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -63,6 +67,7 @@ export default function AccountExtras({ data, refresh, onDeleted }: { data: any;
         <Text style={s.muted}>{t("acc.deleteHint")}</Text>
         {deleting ? (
           <View style={{ gap: 6 }}>
+      <Card><Text style={s.h2}>Profile picture</Text><Text style={s.muted}>Upload a clear front-facing photo. An admin verifies it before customers can see it.</Text><Text style={s.muted}>Status: {data.documents?.find((x:any)=>x.kind==='profile_photo')?.status||'Not uploaded'}</Text><Button title="Add/change profile picture" disabled={busy||!d} onPress={uploadPhoto}/></Card>
             <Field label={t("acc.deleteType")} value={confirm} onChange={(v) => setConfirm(v.toUpperCase())} autoCapitalize="none" />
             <Button
               variant="danger"

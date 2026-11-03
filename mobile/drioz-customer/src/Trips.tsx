@@ -1,3 +1,4 @@
+import DriverPortrait from './DriverPortrait';
 import {localMoney,localPricing} from './local-money';
 import React, { useEffect, useState } from "react";
 import { View, Text, Alert, Share, Linking } from "react-native";
@@ -162,6 +163,7 @@ export function Trip({
           </View>
         </View>
       </View>
+      {trip.driver_id&&trip.driver_name&&<DriverPortrait trip={trip}/>}
       <Text style={s.muted}>
         {typeName}
         {info.hours ? ` · ${t("book.hrs", { n: info.hours })}` : ""} · {trip.transmission === "automatic" ? t("book.automatic") : t("book.manual")}

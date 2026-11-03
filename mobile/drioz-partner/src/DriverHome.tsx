@@ -16,6 +16,7 @@ const kinds = [
   ["licence", "docs.licence", "card-outline"],
   ["identity", "docs.identity", "person-outline"],
   ["assessment", "docs.assessment", "speedometer-outline"],
+  ["profile_photo", "docs.profilePhoto", "camera-outline"],
 ] as const;
 
 export default function DriverScreen({ data, refresh, onWallet }: { data: any; refresh: () => Promise<void>; onWallet?: () => void }) {
@@ -74,7 +75,7 @@ export default function DriverScreen({ data, refresh, onWallet }: { data: any; r
   };
   function upload(kind: string, label: string) {
     run(async () => {
-      const result = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "image/jpeg", "image/png"], copyToCacheDirectory: true, multiple: false });
+      const result = await DocumentPicker.getDocumentAsync({ type: kind === "profile_photo" ? ["image/jpeg", "image/png"] : ["application/pdf", "image/jpeg", "image/png"], copyToCacheDirectory: true, multiple: false });
       if (result.canceled) return;
       const file = result.assets?.[0];
       if (!file) throw Error("No file was selected. Please choose it again.");

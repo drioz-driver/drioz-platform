@@ -174,7 +174,7 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
     {view==='admin'&&<AdminView data={data} me={me} section={activeSection} setSection={pickSection} goSupport={()=>go('support')} t={t}/>}
     {view==='support'&&<SupportView data={data} me={me} act={act} openTicket={openTicket}/>}
     {view==='notifications'&&<InboxView data={data} click={click}/>}
-    {view==='account'&&<AccountView me={me} portal={portal} places={data.places||[]} act={act} onError={m=>toast(m,'error')}/>}
+    {view==='account'&&<AccountView me={me} portal={portal} documents={(data.documents||[]).filter((d:any)=>d.owner_id===me.id)} places={data.places||[]} act={act} onError={m=>toast(m,'error')}/>}
    </main>
   </div>
   <nav className="mobile-nav" aria-label="Workspaces">{mobileNav.map(([v,text,Icon,count])=><button key={v} className={selected(v)?'selected':''} onClick={()=>navigate(v)}><Icon size={20}/>{text.split(' ')[0]}{!!count&&<i/>}</button>)}</nav>

@@ -1,5 +1,6 @@
 'use client';
 import {ArrowRight,Bell,BellOff,Car,CheckCheck,KeyRound,LifeBuoy,LogOut,MapPin,MessageSquare,ShieldCheck,Siren,Trash2,Wallet} from 'lucide-react';
+import DriverPhotoUpload from './driver-photo-upload';
 import {useState} from 'react';
 import {Badge,Callout,Empty,Field,Form} from './primitives';
 import {ago,api,errorMessage,label,ref,when} from './client';
@@ -38,12 +39,13 @@ export function InboxView({data,click}:{data:any;click:(p:string,d:unknown)=>Pro
  </section>;
 }
 
-export function AccountView({me,portal,places=[],act,onError}:{me:any;portal:'customer'|'partner';places?:any[];act:(p:string,d:unknown)=>Promise<any>;onError:(m:string)=>void}){
+export function AccountView({me,portal,documents=[],places=[],act,onError}:{documents?:any[];me:any;portal:'customer'|'partner';places?:any[];act:(p:string,d:unknown)=>Promise<any>;onError:(m:string)=>void}){
  const partner=portal==='partner';const [confirmText,setConfirm]=useState('');
  async function signOut(){try{const r=await sessionFetch('/api/auth/signout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});if(!r.ok)throw Error('Unable to sign out. Try again.');location.assign(partner?'/partner/login':'/login')}catch(e){onError(errorMessage(e))}}
  async function remove(){try{await act('account/delete',{confirm:'DELETE'});await signOut()}catch{}}
  return <div className="two-col">
   <div className="stack">
+   {partner&&<DriverPhotoUpload documents={documents} act={act}/>}
    <section className="panel"><div className="row" style={{gap:18,marginBottom:20}}><span className="avatar lg">{String(me.name||'?').slice(0,2).toUpperCase()}</span><div><h2 style={{fontSize:22}}>{me.name}</h2><p className="muted">{me.email.endsWith('@phone.drioz.invalid')?me.phone:me.email}</p><div style={{marginTop:8}}><Badge value={me.role} tone="good"/></div></div></div>
     <Form button="Save profile" buttonClass="primary sm" onSubmit={f=>act('account/profile',{name:String(f.get('name')||'').trim(),...(String(f.get('phone')||'').trim()?{phone:String(f.get('phone')).replace(/[\s()-]/g,'')}:{})})}>
      <div className="fields"><Field title="Full name"><input name="name" defaultValue={me.name} minLength={2} maxLength={80} required/></Field><Field title="Mobile for trip SMS"><input name="phone" type="tel" defaultValue={me.phone||''} placeholder="+91 98765 43210" pattern="\+?[0-9\s()-]{10,20}"/></Field></div>

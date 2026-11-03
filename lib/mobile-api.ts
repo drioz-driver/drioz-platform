@@ -80,7 +80,7 @@ export function mobilePathAllowed(path: string, method: string) {
       path === "driver/offers" ||
       /^bookings\/[^/]+\/inspections$/.test(path) ||
       /^inspections\/[^/]+\/photos\/\d$/.test(path) ||
-      /^bookings\/[^/]+\/(invoice|location)$/.test(path) ||
+      /^bookings\/[^/]+\/(invoice|location|driver-photo)$/.test(path) ||
       /^tickets\/[^/]+$/.test(path) ||
       /^documents\/[^/]+$/.test(path)
     );

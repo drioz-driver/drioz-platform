@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {operations,ApiError} from '../lib/operations.ts';
 import {money,inZones,assertTransition} from '../lib/domain.ts';
-function setup(){const sql=new DatabaseSync(':memory:');for(const name of readdirSync(new URL('../drizzle/',import.meta.url)).filter(n=>n.endsWith('.sql')).sort())sql.exec(readFileSync(new URL('../drizzle/'+name,import.meta.url),'utf8'));function stmt(query:string,args:any[]=[]):any{return {bind:(...values:any[])=>stmt(query,values),first:async()=>sql.prepare(query).get(...args)||null,all:async()=>({results:sql.prepare(query).all(...args)}),run:async()=>{const r=sql.prepare(query).run(...args);return {meta:{changes:Number(r.changes)}}},query,args}}const db={prepare:stmt,batch:async(list:any[])=>{sql.exec('BEGIN');try{const r=[];for(const s of list)r.push(await s.run());sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}};return {sql,ops:operations(db,null,'owner@example.com','test-only-trip-secret-at-least-thirty-two-chars')}}
+function setup(bucket:any=null){const sql=new DatabaseSync(':memory:');for(const name of readdirSync(new URL('../drizzle/',import.meta.url)).filter(n=>n.endsWith('.sql')).sort())sql.exec(readFileSync(new URL('../drizzle/'+name,import.meta.url),'utf8'));function stmt(query:string,args:any[]=[]):any{return {bind:(...values:any[])=>stmt(query,values),first:async()=>sql.prepare(query).get(...args)||null,all:async()=>({results:sql.prepare(query).all(...args)}),run:async()=>{const r=sql.prepare(query).run(...args);return {meta:{changes:Number(r.changes)}}},query,args}}const db={prepare:stmt,batch:async(list:any[])=>{sql.exec('BEGIN');try{const r=[];for(const s of list)r.push(await s.run());sql.exec('COMMIT');return r}catch(e){sql.exec('ROLLBACK');throw e}}};return {sql,ops:operations(db,bucket,'owner@example.com','test-only-trip-secret-at-least-thirty-two-chars')}}
 test('closed cities provide indicative estimates without permitting booking or storing quotes',async()=>{
  const {ops,sql}=setup();const customer=await ops.actor({id:'estimate-user',email:'customer@example.com',name:'Customer'});await ops.seed();sql.prepare("INSERT INTO audit(id,actor_id,target,action,details,created_at) VALUES('paused',?,'hyderabad','city_rate_card_updated','{}',0)").run(customer.id);
  const input={cityId:'hyderabad',pickup:'Madhapur',destination:'Airport',tripType:'one-way',transmission:'manual',scheduledAt:null};
@@ -104,7 +104,7 @@ test('REVIEW PROBE: driver can accept a scheduled trip 24 hours early through th
 test('REVIEW PROBE: profile licence can change while approved evidence remains reusable',async()=>{
  const {ops,sql}=setup();const {owner,driver}=await actors(ops);await ops.seed();
  await ops.handle(driver,'driver/apply','POST',{cityId:'hyderabad',phone:'+919876543210',licence:'OLD-LICENCE',licenceExpiry:'2030-12-31'});
- for(const kind of ['licence','identity','assessment'])sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES(?,?,?,?,?,1,'approved',?)").run(crypto.randomUUID(),driver.id,kind,kind,'application/pdf',Date.now());
+ for(const kind of ['licence','identity','assessment','profile_photo'])sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES(?,?,?,?,?,1,'approved',?)").run(crypto.randomUUID(),driver.id,kind,kind,'application/pdf',Date.now());
  await ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Initial review'});
  await ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'pending',note:'Review changed licence'});
  await ops.handle(driver,'driver/apply','POST',{cityId:'hyderabad',phone:'+919876543210',licence:'NEW-LICENCE',licenceExpiry:'2035-12-31'});
@@ -114,7 +114,7 @@ test('REVIEW PROBE: profile licence can change while approved evidence remains r
 test('REVIEW PROBE: rejecting a newer evidence file does not block approval using an older approved file',async()=>{
  const {ops,sql}=setup();const {owner,driver}=await actors(ops);await ops.seed();
  await ops.handle(driver,'driver/apply','POST',{cityId:'hyderabad',phone:'+919876543210',licence:'LICENCE123',licenceExpiry:'2030-12-31'});
- for(const kind of ['licence','identity','assessment'])sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES(?,?,?,?,?,1,'approved',?)").run(crypto.randomUUID(),driver.id,kind,kind,'application/pdf',Date.now());
+ for(const kind of ['licence','identity','assessment','profile_photo'])sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES(?,?,?,?,?,1,'approved',?)").run(crypto.randomUUID(),driver.id,kind,kind,'application/pdf',Date.now());
  const rejected=crypto.randomUUID();sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES(?,?, 'licence','new','application/pdf',1,'pending',?)").run(rejected,driver.id,Date.now()+1);
  await ops.handle(owner,`documents/${rejected}/review`,'POST',{status:'rejected'});
  await ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Old evidence still counts'});
@@ -144,4 +144,18 @@ test('only admin can open the booking customer profile; driver, customer and sta
  const result=await ops.handle(owner,`bookings/${b.id}/customer-profile`,'GET',null);assert.equal(result.customer.id,customer.id);assert.equal(result.customer.phone,'+919876543210');assert.equal(result.customer.email,customer.email);
  for(const a of [customer,driver,other])await rejectsStatus(ops.handle(a,`bookings/${b.id}/customer-profile`,'GET',null),403);
  for(const role of ['operator','support','finance']){const a=await ops.actor({id:'profile-'+role,email:role+'@example.com',name:role});a.role=role;sql.prepare('UPDATE users SET role=? WHERE id=?').run(role,a.id);await rejectsStatus(ops.handle(a,`bookings/${b.id}/customer-profile`,'GET',null),403);}
+});
+
+
+test('driver photos require review and are visible only to the booked customer or admin',async()=>{
+ const bucket={get:async()=>({downloadUrl:'https://storage.example.invalid/signed-photo'}),put:async()=>{},delete:async()=>{}};const {ops,sql}=setup(bucket);const {owner,customer,driver,other}=await actors(ops);const b=await trip(ops,owner,customer);await approve(sql,driver);await ops.handle(owner,`bookings/${b.id}/assign`,'POST',{driverId:driver.id});
+ sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES('photo1',?,'profile_photo','private-photo','image/jpeg',42,'pending',?)").run(driver.id,Date.now());
+ assert.equal((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,null);
+ await rejectsStatus(ops.handle(other,`bookings/${b.id}/driver-photo`,'GET',null),403);
+ await rejectsStatus(ops.handle(customer,`bookings/${b.id}/driver-profile`,'GET',null),403);
+ await rejectsStatus(ops.handle(driver,`drivers/${driver.id}/profile`,'GET',null),403);
+ const profile=await ops.handle(owner,`drivers/${driver.id}/profile`,'GET',null);assert.equal(profile.driver.name,driver.name);assert.equal(profile.photo.status,'pending');
+ await ops.handle(owner,'documents/photo1/review','POST',{status:'approved'});assert.match((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,/signed-photo/);
+ sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES('photo2',?,'profile_photo','new-photo','image/jpeg',42,'pending',?)").run(driver.id,Date.now()+10);
+ assert.equal((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,null);
 });

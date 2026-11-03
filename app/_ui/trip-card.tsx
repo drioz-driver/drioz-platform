@@ -1,4 +1,5 @@
 'use client';
+import DriverPortrait from './driver-portrait';
 import {localMoney} from '@/lib/local-money';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Calendar,Car,Clock,Cog,FileText,KeyRound,LocateFixed,Navigation,Share2,Star,UserRound,Zap} from 'lucide-react';
@@ -52,6 +53,7 @@ export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:
   <div className="trip-top"><span>DR-{ref(b.id)}</span><Badge value={b.status}/></div>
   {mode==='customer'&&b.status==='requested'&&<div className="finding"><SearchingWheel size={56}/><strong>Finding your driver…</strong><span>Offering your ride to the nearest verified driver. We’ll notify you the moment someone accepts.</span></div>}
   {b.status==='in_progress'&&<div className="on-road"><SteeringStrip height={32}/><b><span>ON THE ROAD</span></b></div>}
+  {mode==='customer'&&b.driver_id&&b.driver_name&&<DriverPortrait key={b.driver_id} bookingId={b.id} name={b.driver_name}/>}
   {before}
   {b.status==='completed'&&<p className="helper" role="status">{Number(b.paid_amount)>=Number(b.fare)?'Paid · '+String(b.paid_methods||'payment').replaceAll('_',' '):(()=>{try{return JSON.parse(b.payment_choice||'{}').method==='cash'?'Cash selected · waiting for driver confirmation':'Payment due'}catch{return 'Payment due'}})()}</p>}
   <TripRoute b={b}/>

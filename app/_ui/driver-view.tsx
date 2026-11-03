@@ -13,7 +13,7 @@ import DriverWalletSummary from '../driver-wallet-summary';
 import {PartnerTripActions} from './partner-trip';
 import {Callout} from './primitives';
 
-const docKinds=[['licence','Driving licence'],['identity','Identity proof'],['assessment','Driving assessment']] as const;
+const docKinds=[['licence','Driving licence'],['identity','Identity proof'],['assessment','Driving assessment'],['profile_photo','Profile photo (admin review)']] as const;
 
 export default function DriverView({data,me,section,setSection,t,gps,position,shareGps}:{data:any;me:any;section:string;setSection:(s:string)=>void;t:(b:any)=>TripActions;gps:boolean;position:any;shareGps:()=>void}){
  const {driver,cities,documents,payouts}=data;const base=t({});
@@ -42,7 +42,7 @@ export default function DriverView({data,me,section,setSection,t,gps,position,sh
    </div>}
    {!driver||driver.verification!=='approved'?<div className="feature-panel">
     <span className="eyebrow light">Before your first trip</span><h2>Ready for the road.</h2><p>Three steps stand between you and your first journey with DRIOZ. Most partners finish in under ten minutes.</p>
-    <ol className="steps"><li><b>1</b>Complete your partner profile and licence details.</li><li><b>2</b>Upload licence, identity and driving-assessment evidence.</li><li><b>3</b>Operations verifies everything and approves your account.</li></ol>
+    <ol className="steps"><li><b>1</b>Complete your partner profile and licence details.</li><li><b>2</b>Upload a clear face photo, licence, identity and driving-assessment evidence.</li><li><b>3</b>Operations verifies everything and approves your account.</li></ol>
     <button className="primary" onClick={()=>setSection('onboarding')}>Continue onboarding <ArrowRight size={16}/></button>
    </div>:<div className="two-col">
     <div>
@@ -72,7 +72,7 @@ export default function DriverView({data,me,section,setSection,t,gps,position,sh
      <div className="fields"><Field title="Driving licence number"><input name="licence" defaultValue={driver?.licence||''} minLength={5} maxLength={40} required/></Field><Field title="Licence valid until"><input type="date" name="licenceExpiry" min={new Date().toISOString().slice(0,10)} defaultValue={driver?.licence_expiry||''} required/></Field></div>
     </Form>
    </section>
-   <section className="panel"><h2>Verification documents</h2><p>PDF, JPEG or PNG up to 4 MB. Files are private and only visible to you and authorised operations staff.</p>
+   <section className="panel"><h2>Profile photo &amp; verification documents</h2><p>Upload a clear front-facing JPEG or PNG photo. An admin reviews your photo before customers can see it.</p><p>PDF, JPEG or PNG up to 4 MB. Files are private and only visible to you and authorised operations staff.</p>
     <div className="list" style={{marginBottom:18}}>{docKinds.map(([k,name])=>{const st=docState(k);return <div className="list-item" key={k}><span className={'tile-icon'+(st==='approved'?' brand':'')}><FileCheck size={18}/></span><div className="grow"><strong>{name}</strong><small>{st==='missing'?'Not uploaded yet':st==='approved'?'Verified':st==='pending'?'Awaiting review':'Rejected — upload again'}</small></div><Badge value={st==='missing'?'required':st}/></div>})}</div>
     <Form button={<><Upload size={16}/>Upload securely</>} reset onSubmit={f=>{const file=f.get('file');if(!(file instanceof File)||!file.size)throw Error('Choose a readable PDF, JPEG or PNG.');if(file.size>4*1024*1024)throw Error('Maximum file size is 4 MB. Compress the file or scan at a lower resolution and retry.');return base.act('documents',f)}}>
      <Field title="Document type"><select name="kind">{docKinds.map(([k,n])=><option key={k} value={k}>{n}</option>)}</select></Field>

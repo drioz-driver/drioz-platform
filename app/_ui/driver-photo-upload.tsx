@@ -1,0 +1,8 @@
+ 'use client';
+import {useEffect,useState} from 'react';
+import {Badge,Field,Form} from './primitives';
+export default function DriverPhotoUpload({documents,act}:{documents:any[];act:(p:string,d:unknown)=>Promise<any>}){
+ const [file,F]=useState<File|null>(null),[preview,P]=useState('');const latest=documents.find(d=>d.kind==='profile_photo');
+ useEffect(()=>{if(!file){P('');return}const url=URL.createObjectURL(file);P(url);return()=>URL.revokeObjectURL(url)},[file]);
+ return <section className="panel" aria-label="Driver profile picture"><h2>Profile picture</h2><p>Choose a clear front-facing photo of yourself. Check the preview and submit it for admin verification.</p><span className="avatar" style={{display:'flex',width:100,height:100,overflow:'hidden',marginBottom:16}}>{preview||latest?<img src={preview||'/api/ops/documents/'+latest.id} alt="Your driver profile photo" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:'Photo'}</span>{latest&&<p>Photo review: <Badge value={latest.status}/></p>}<Form button="Submit photo for verification" onSubmit={async()=>{if(!file)throw Error('Choose a JPEG or PNG photo.');if(!['image/jpeg','image/png'].includes(file.type))throw Error('Choose a JPEG or PNG photo.');if(file.size>4*1024*1024)throw Error('Maximum photo size is 4 MB.');const data=new FormData();data.set('kind','profile_photo');data.set('file',file);await act('documents',data);F(null);}}><Field title="Add/change profile picture"><input type="file" accept="image/jpeg,image/png" capture="user" required onChange={e=>F(e.target.files?.[0]||null)}/></Field></Form><p className="helper">Only the latest approved photo is shown to your customers. Complete your driver application before uploading.</p></section>;
+}

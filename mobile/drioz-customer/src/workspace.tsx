@@ -83,48 +83,56 @@ export function useWorkspace({ pollMs = 15000, onSignOut }: { pollMs?: number; o
   useEffect(() => {
     if (!session) return;
     let active = true;
-    const load = () =>
-      refresh()
-        .then(() => active && setError(""))
-        .catch((e) => {
-          if (!active) return;
-          setError(errorText(e, "Connection failed"));
-          if (e instanceof APIError && e.status === 401) {
-            onSignOut?.().catch(() => {});
-            supabase.auth.signOut({ scope: "local" });
-          }
-        });
-    // Poll a tiny change marker and download the full snapshot only when something changed
-    // (or once a minute as a safety net). Cuts mobile data use and server load by ~90%.
-    let pulse = "",
-      fullAt = 0,
-      busy = false;
-    const sync = async (force = false) => {
-      if (busy || AppState.currentState !== "active") return;
+    let pulse = "", fullAt = 0, busy = false, resumeQueued = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    async function sync(force = false, retries = 1) {
+      if (!active || AppState.currentState !== "active") return;
+      if (busy) {
+        if (force) resumeQueued = true;
+        return;
+      }
       busy = true;
       try {
-        // Read the marker first so a change landing during the snapshot is caught on the next tick.
-        const marker = await api("pulse");
-        if (!force && pulse && marker.v === pulse && Date.now() - fullAt < 60000) return;
-        await load();
-        pulse = marker.v;
+        if (!force) {
+          const marker = await api("pulse");
+          if (pulse === marker.v && Date.now() - fullAt < 60000) return;
+          pulse = marker.v;
+        }
+        await refresh();
         fullAt = Date.now();
-      } catch {
-        // Older servers without the pulse endpoint fall back to a plain refresh.
-        if (Date.now() - fullAt >= pollMs) {
-          await load();
-          fullAt = Date.now();
+        if (active) setError("");
+      } catch (e) {
+        pulse = "";
+        if (!active || AppState.currentState !== "active" || resumeQueued) return;
+        if (e instanceof APIError && e.status === 401) {
+          setError("Your sign-in expired. Please sign in again.");
+          void supabase.auth.signOut({ scope: "local" });
+        } else if (retries > 0) {
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(() => void sync(true, retries - 1), 750);
+        } else {
+          setError(errorText(e, "Unable to refresh. Pull down to retry."));
         }
       } finally {
         busy = false;
+        if (resumeQueued) {
+          resumeQueued = false;
+          void sync(true);
+        }
       }
-    };
-    load();
-    const interval = setInterval(() => sync(), pollMs);
-    const resume = AppState.addEventListener("change", (state) => state === "active" && sync(true));
+    }
+    void sync(true);
+    const interval = setInterval(() => void sync(), pollMs);
+    const resume = AppState.addEventListener("change", state => {
+      if (state === "active") {
+        clearTimeout(retryTimer);
+        void sync(true);
+      }
+    });
     return () => {
       active = false;
       clearInterval(interval);
+      clearTimeout(retryTimer);
       resume.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

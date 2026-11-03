@@ -43,7 +43,9 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // Piggy-back an offer check so a backgrounded partner still gets alerted.
       if (AppState.currentState !== "active") {
         const r = await api("driver/offers");
-        if (r?.offer) await alertOffer(r.offer, false);
+        const offer=r?.offers?.[0];
+        const seconds=offer?Math.ceil((Number(offer.expires_at)-Number(r.serverNow||Date.now()))/1000):0;
+        if(offer&&seconds>0)await alertOffer({id:offer.offer_id,partnerFare:Number(offer.partner_fare),pickup:offer.pickup,seconds},false);
       }
     } catch (e) {
       if (e instanceof APIError && [401, 403, 409].includes(e.status))
@@ -54,7 +56,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
 /** Foreground tracking works even when the driver declines background permission. */
 export async function startTracking(requestBackground = true) {
   if (starting) return starting;
-  if (foregroundWatch && !requestBackground) return;
+
   const generation = trackingGeneration;
   starting = (async () => {
     if (!foregroundWatch) {

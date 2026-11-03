@@ -1,3 +1,4 @@
+import { AppState } from "react-native";
 import { supabase } from "./session";
 export const apiOrigin = (process.env.EXPO_PUBLIC_API_URL || "").replace(
   /\/$/,
@@ -19,12 +20,19 @@ export async function api(
 ): Promise<any> {
   if (!apiOrigin.startsWith("https://"))
     throw Error("Set a valid HTTPS API URL in mobile configuration");
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if(sessionError&&(sessionError.status===undefined||sessionError.status===0||sessionError.status===429||sessionError.status>=500)){
+    throw new APIError("Could not reconnect. Check your connection and retry.",503);
+  }
   if (!sessionData.session) throw new APIError("Sign in to continue", 401);
   const multipart = data instanceof FormData;
   // AbortSignal.timeout is not available on every Hermes build; use a controller.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), multipart ? 60000 : 20000);
+  const foregroundRead=data===undefined&&AppState.currentState==="active";
+  const lifecycle=foregroundRead?AppState.addEventListener("change",state=>{
+    if(state==="background")controller.abort();
+  }):null;
   let response: Response;
   try {
    // "billing/x" calls the wallet & payment API at /api/x (Razorpay, wallet, driver finance).
@@ -48,6 +56,7 @@ export async function api(
     );
   } finally {
     clearTimeout(timer);
+    lifecycle?.remove();
   }
   if (response.status === 401 && retry) {
     if (!refreshing) refreshing = supabase.auth.refreshSession().finally(() => { refreshing = null; });

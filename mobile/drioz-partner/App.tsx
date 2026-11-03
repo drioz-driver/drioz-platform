@@ -1,6 +1,6 @@
 import WelcomeOffer from './src/WelcomeOffer';
 import React, { useEffect, useRef, useState } from "react";
-import { RefreshControl, ScrollView, View } from "react-native";
+import { AppState, RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -55,8 +55,12 @@ function Partner() {
   const hasActiveTrip = !!w.data?.bookings?.some((b: any) => b.driver_id === w.data.me.id && ["assigned", "arrived", "in_progress"].includes(b.status));
   const offers = useOffers({ enabled: !!w.session && approvedOnline && !hasActiveTrip });
   useEffect(() => {
-    if (hasActiveTrip) resumeTracking().catch(() => {});
-  }, [hasActiveTrip]);
+    if (!hasActiveTrip&&!approvedOnline) return;
+    const resume=()=>void resumeTracking().catch(()=>{});
+    resume();
+    const listener=AppState.addEventListener("change",state=>{if(state==="active")resume()});
+    return()=>listener.remove();
+  }, [hasActiveTrip,approvedOnline]);
   useEffect(() => {
     if (approvedOnline) prepareAlerts().catch(() => {});
   }, [approvedOnline]);

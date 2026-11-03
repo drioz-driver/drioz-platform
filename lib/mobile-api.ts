@@ -77,6 +77,7 @@ export function mobilePathAllowed(path: string, method: string) {
     return (
       path === "snapshot" ||
       path === "pulse" ||
+      path === "driver/profile-photo" ||
       path === "driver/offers" ||
       /^bookings\/[^/]+\/inspections$/.test(path) ||
       /^inspections\/[^/]+\/photos\/\d$/.test(path) ||
@@ -85,6 +86,7 @@ export function mobilePathAllowed(path: string, method: string) {
       /^documents\/[^/]+$/.test(path)
     );
   if (method !== "POST") return false;
+  if (path === "driver/profile-photo/remove") return true;
   return (
     [
       "coverage",

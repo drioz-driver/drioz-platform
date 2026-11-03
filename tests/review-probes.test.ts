@@ -147,15 +147,16 @@ test('only admin can open the booking customer profile; driver, customer and sta
 });
 
 
-test('driver photos require review and are visible only to the booked customer or admin',async()=>{
+test('driver photos appear automatically for booked customers and can be removed by the owner',async()=>{
  const bucket={get:async()=>({downloadUrl:'https://storage.example.invalid/signed-photo'}),put:async()=>{},delete:async()=>{}};const {ops,sql}=setup(bucket);const {owner,customer,driver,other}=await actors(ops);const b=await trip(ops,owner,customer);await approve(sql,driver);await ops.handle(owner,`bookings/${b.id}/assign`,'POST',{driverId:driver.id});
  sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES('photo1',?,'profile_photo','private-photo','image/jpeg',42,'pending',?)").run(driver.id,Date.now());
- assert.equal((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,null);
+ assert.match((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,/signed-photo/);
  await rejectsStatus(ops.handle(other,`bookings/${b.id}/driver-photo`,'GET',null),403);
  await rejectsStatus(ops.handle(customer,`bookings/${b.id}/driver-profile`,'GET',null),403);
  await rejectsStatus(ops.handle(driver,`drivers/${driver.id}/profile`,'GET',null),403);
- const profile=await ops.handle(owner,`drivers/${driver.id}/profile`,'GET',null);assert.equal(profile.driver.name,driver.name);assert.equal(profile.photo.status,'pending');
- await ops.handle(owner,'documents/photo1/review','POST',{status:'approved'});assert.match((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,/signed-photo/);
+ const profile=await ops.handle(owner,`drivers/${driver.id}/profile`,'GET',null);assert.equal(profile.driver.name,driver.name);assert.equal(profile.photo.status,'visible');
+ await rejectsStatus(ops.handle(owner,'documents/photo1/review','POST',{status:'approved'}),400);assert.match((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,/signed-photo/);
  sql.prepare("INSERT INTO documents(id,owner_id,kind,object_key,mime,size,status,created_at) VALUES('photo2',?,'profile_photo','new-photo','image/jpeg',42,'pending',?)").run(driver.id,Date.now()+10);
+ await ops.handle(driver,'driver/profile-photo/remove','POST',{});
  assert.equal((await ops.handle(customer,`bookings/${b.id}/driver-photo`,'GET',null)).url,null);
 });

@@ -46,3 +46,21 @@ test('production acceptance rolls back without balance and completion uses the f
 test('refunds hold pending earnings; an unknown bank outcome stays reserved for idempotent retry',async()=>{const f=await setup('live');try{await f.driver.coupon(f.actor,{code:'DRIOZ500'});const b=await f.trip();await f.assign(b);await f.complete(b);const order=await f.service.create({id:'customer'},{purpose:'booking',bookingId:b.id});await f.capture(order);await f.db.prepare("INSERT INTO payments(id,booking_id,amount,method,reference,status,created_at) VALUES(?,?,100000,'wallet','refund-test','refunded',0)").bind(crypto.randomUUID(),b.id).run();await f.db.prepare('UPDATE driver_trip_money SET settles_at=0 WHERE booking_id=?').bind(b.id).run();await f.db.prepare('SELECT driver_release_earnings()').all();assert.equal((await f.driver.summary(f.actor)).review,true);assert.equal((await f.driver.summary(f.actor)).earnings,0);
  await f.db.prepare("UPDATE driver_trip_money SET status='cash' WHERE booking_id=?").bind(b.id).run();await f.db.prepare("UPDATE driver_accounts SET earnings=80000 WHERE driver_id='driver' AND mode='live'").run();await f.db.prepare("INSERT INTO driver_banks(driver_id,holder,account_number,ifsc,status,fund_account_id,updated_at) VALUES('driver','Driver','12345678901','HDFC0000001','verified','fa_test',0)").run();let failed=true;const idempotency:string[]=[];const provider=async(_url:any,options:any)=>{idempotency.push(options.headers['X-Payout-Idempotency']);if(failed)throw Error('timeout');return Response.json({id:'pout_test',fund_account_id:'fa_test',amount:50000,currency:'INR',status:'processed'})};const driver=driverWallet(f.db,'live',{RAZORPAYX_KEY_ID:'rzp_live_unit',RAZORPAYX_KEY_SECRET:'unit',RAZORPAYX_ACCOUNT_NUMBER:'0000',RAZORPAYX_WEBHOOK_SECRET:'webhook-unit'},provider as any);const key=crypto.randomUUID();await assert.rejects(driver.withdraw(f.actor,{amount:50000,key}));assert.equal((await driver.summary(f.actor)).earnings,30000);failed=false;await driver.withdraw(f.actor,{amount:50000,key});assert.equal((await driver.summary(f.actor)).earnings,30000);assert.equal(idempotency[0],idempotency[1]);assert.equal((await driver.summary(f.actor)).withdrawals[0].status,'processed');await rejects(driver.webhook('{}','0'.repeat(64)),400);
  }finally{await f.pg.close()}});
+
+
+test('an expired ride cannot be paid and a captured in-flight order credits the wallet once',async()=>{
+ const f=await setup('live');
+ const customer={id:'customer'};
+ try{
+  const booking=await f.trip();
+  const order=await f.service.create(customer,{purpose:'booking',bookingId:booking.id});
+  await f.db.prepare("UPDATE bookings SET status='no_driver' WHERE id=?").bind(booking.id).run();
+  await rejects(f.service.create(customer,{purpose:'booking',bookingId:booking.id}),409);
+  await f.capture(order);
+  await f.capture(order);
+  const wallet=await f.service.wallet(customer);
+  assert.equal(wallet.balance,order.amount);
+  assert.equal(wallet.bookings.length,0);
+  assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM payments').first()).n,0);
+ }finally{await f.pg.close()}
+});

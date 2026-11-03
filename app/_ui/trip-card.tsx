@@ -65,9 +65,9 @@ export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:
    <div>
     {mode==='customer'&&b.company_id&&<small>Billed to company</small>}{b.invoice_number&&<small>Invoice {b.invoice_number}</small>}{b.driver_name&&mode!=='partner'&&<small><UserRound size={13} style={{verticalAlign:-2}}/> {b.driver_name}{b.driver_rating?<> · <Star size={12} style={{verticalAlign:-1}}/> {b.driver_rating}</>:null}</small>}
     {mode==='dispatch'&&b.customer_name&&<small>Customer · {b.customer_name}</small>}
-    {mode==='customer'&&['assigned','arrived'].includes(b.status)&&<StartCode bookingId={b.id} t={t}/>}
    </div>
   </div>
+    {mode==='customer'&&['assigned','arrived'].includes(b.status)&&<StartCode bookingId={b.id} t={t}/>}
   {actions!==undefined?actions:<div className="actions">
    {mode==='partner'&&b.status==='assigned'&&<button disabled={t.busy} className="primary" onClick={()=>t.click(`bookings/${b.id}/status`,{status:'arrived'})}>Confirm arrival</button>}
    {mode==='partner'&&b.status==='arrived'&&<Form onSubmit={f=>t.act(`bookings/${b.id}/status`,{status:'in_progress',code:f.get('code')})} button="Start journey"><Field title="Customer’s six-digit code"><input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required placeholder="••••••" style={{letterSpacing:'.4em',fontSize:20,textAlign:'center'}}/></Field></Form>}

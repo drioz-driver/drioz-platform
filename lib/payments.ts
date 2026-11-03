@@ -1,3 +1,4 @@
+import {searchDeadline} from './booking-search.ts';
 import Razorpay from 'razorpay';
 import {driverAccount,driverWallet} from './driver-wallet.ts';
 import {createHmac,timingSafeEqual} from 'node:crypto';
@@ -20,7 +21,8 @@ export function paymentService(db:any,config:PaymentConfig,provider?:any){
  const all=async(database:any,sql:string,...values:any[])=>(await q(database,sql,...values).all()).results;
  async function atomic<T>(work:(database:any)=>Promise<T>):Promise<T>{if(!db.transaction)throw new ApiError(503,'Payment database transactions are unavailable.');for(let attempt=0;;attempt++){try{return await db.transaction(work)}catch(e:any){if(attempt>=2||!['40001','40P01','23505'].includes(e.code))throw e}}}
  async function account(database:any,user:string){await q(database,'INSERT INTO wallet_accounts(user_id,mode,balance,updated_at) VALUES(?,?,0,?) ON CONFLICT(user_id,mode) DO NOTHING',user,mode,Date.now()).run();return one(database,'SELECT * FROM wallet_accounts WHERE user_id=? AND mode=? FOR UPDATE',user,mode)}
- async function booking(database:any,user:string,id:string,allowPending=false){const b=await one(database,'SELECT * FROM bookings WHERE id=? FOR UPDATE',id);if(!b||b.customer_id!==user)throw new ApiError(404,'Journey not found.');if(b.status!=='completed'&&(!allowPending||b.status==='cancelled'))throw new ApiError(409,'Payment is available after your journey is completed.');return b}
+ function payableBooking(b:any){return !['cancelled','no_driver'].includes(b.status)&&(b.status!=='requested'||searchDeadline(b)>Date.now())}
+ async function booking(database:any,user:string,id:string,allowPending=false){const b=await one(database,'SELECT * FROM bookings WHERE id=? FOR UPDATE',id);if(!b||b.customer_id!==user)throw new ApiError(404,'Journey not found.');if(b.status!=='completed'&&(!allowPending||!payableBooking(b)))throw new ApiError(409,'Payment is available after your journey is completed.');return b}
  async function due(database:any,b:any){const real=await one(database,"SELECT COALESCE(SUM(CASE WHEN status='received' THEN amount ELSE -amount END),0) AS net FROM payments WHERE booking_id=?",b.id);const test=mode==='test'?await one(database,"SELECT COALESCE(SUM(amount),0) AS net FROM gateway_payments WHERE booking_id=? AND mode='test'",b.id):{net:0};return Math.max(0,Number(b.fare)-Number(real.net)-Number(test.net))}
  async function spend(database:any,user:string,b:any,amount:number,requestKey:string){
   const entry=uuid(),payment=uuid(),now=Date.now();
@@ -32,7 +34,7 @@ export function paymentService(db:any,config:PaymentConfig,provider?:any){
   if(mode==='live')await q(database,"INSERT INTO payments(id,booking_id,amount,method,reference,status,created_at) VALUES(?,?,?,?,?,'received',?)",uuid(),b.id,amount,requestKey.startsWith('order:')?'online':'wallet','wallet:'+entry,now).run();
   await q(database,'UPDATE bookings SET updated_at=? WHERE id=?',now,b.id).run();
  }
- async function wallet(actor:Actor){const driver=await driverWallet(db,mode,config).summary(actor);return atomic(async database=>{const balance=await one(database,'SELECT balance FROM wallet_accounts WHERE user_id=? AND mode=?',actor.id,mode);const records=await all(database,'SELECT id,amount,kind,booking_id,created_at FROM wallet_entries WHERE user_id=? AND mode=? ORDER BY created_at DESC LIMIT 50',actor.id,mode);const bookings=await all(database,"SELECT id,pickup,destination,fare,status FROM bookings WHERE customer_id=? AND status<>'cancelled' ORDER BY updated_at DESC LIMIT 50",actor.id);const payable=[];for(const b of bookings)payable.push({...b,due:await due(database,b)});return {mode,enabled,driver,balance:Number(balance?.balance||0),currency:'INR',entries:records,bookings:payable}})}
+ async function wallet(actor:Actor){const driver=await driverWallet(db,mode,config).summary(actor);return atomic(async database=>{const balance=await one(database,'SELECT balance FROM wallet_accounts WHERE user_id=? AND mode=?',actor.id,mode);const records=await all(database,'SELECT id,amount,kind,booking_id,created_at FROM wallet_entries WHERE user_id=? AND mode=? ORDER BY created_at DESC LIMIT 50',actor.id,mode);const bookings=await all(database,"SELECT id,pickup,destination,fare,status,created_at,scheduled_at FROM bookings WHERE customer_id=? AND status NOT IN ('cancelled','no_driver') ORDER BY updated_at DESC LIMIT 50",actor.id);const payable=[];for(const b of bookings.filter(payableBooking))payable.push({...b,due:await due(database,b)});return {mode,enabled,driver,balance:Number(balance?.balance||0),currency:'INR',entries:records,bookings:payable}})}
  async function create(actor:Actor,raw:unknown){
   requireGateway();
   const input=parse(orderInput,raw),requestKey=input.key||uuid();
@@ -77,7 +79,7 @@ export function paymentService(db:any,config:PaymentConfig,provider?:any){
    await q(database,"INSERT INTO wallet_entries(id,user_id,mode,amount,kind,order_id,created_at) VALUES(?,?,?,?,'topup',?,?)",uuid(),order.customer_id,mode,order.amount,order.id,now).run();
    await q(database,'UPDATE wallet_accounts SET balance=balance+?,updated_at=? WHERE user_id=? AND mode=?',order.amount,now,order.customer_id,mode).run();
    let paid=false;
-   if(order.purpose==='booking'){const b=await booking(database,order.customer_id,order.booking_id,true);if(await due(database,b)===order.amount){await spend(database,order.customer_id,b,order.amount,'order:'+order.id);paid=true}}
+   if(order.purpose==='booking'){const b=await one(database,'SELECT * FROM bookings WHERE id=? AND customer_id=? FOR UPDATE',order.booking_id,order.customer_id);if(b&&payableBooking(b)&&await due(database,b)===order.amount){await spend(database,order.customer_id,b,order.amount,'order:'+order.id);paid=true}}
    return {verified:true,pending:false,mode,message:paid?'Journey payment confirmed.':order.purpose==='booking'?'Payment confirmed. The journey balance changed, so the amount is available in your wallet.':'Money added to your wallet.'};
   });
  }

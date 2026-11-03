@@ -1192,3 +1192,17 @@ form.inline-form .form-message{flex-basis:100%;margin:0}
 @media(max-width:800px){
  .customer-site:not(.guest-booking)>.site-header{position:sticky;top:0}
 }
+
+/* Keep the live journey compact and the start code inside its own row. */
+#active-journeys .trip-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),560px))}
+.customer-journeys .trip{gap:12px}
+.customer-journeys .trip-route{gap:10px}
+.customer-journeys .trip-route strong{font-size:14px;line-height:1.4}
+.customer-journeys .live-trip-map{height:190px}
+.customer-journeys .trip-fare{flex-wrap:wrap;align-items:center}
+.customer-journeys .trip-fare>div{min-width:0;max-width:100%;align-items:flex-start}
+.customer-journeys .trip-fare>div small{white-space:normal;overflow-wrap:anywhere}
+.customer-journeys .start-code-control{max-width:100%;justify-items:start;border-top:1px solid var(--line);padding-top:10px}
+.customer-journeys .start-code-control small{text-align:left;white-space:normal}
+.customer-journeys .start-code-control .code{font-size:24px;letter-spacing:.16em}
+.customer-journeys .start-code-control button{max-width:100%;white-space:normal}

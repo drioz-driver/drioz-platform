@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Text, Alert, View, Switch, Pressable } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import HostedMap from "./HostedMap";
 import * as DocumentPicker from "expo-document-picker";
 import { api, money } from "./api";
 import { documentUploadDetails } from "./document-upload";
@@ -203,9 +203,7 @@ export default function DriverScreen({ data, refresh, onWallet }: { data: any; r
             />
             {d.lat != null && d.lng != null ? (
               <>
-                <MapView style={{ height: 180, borderRadius: 16 }} region={{ latitude: d.lat, longitude: d.lng, latitudeDelta: 0.015, longitudeDelta: 0.015 }}>
-                  <Marker coordinate={{ latitude: d.lat, longitude: d.lng }} title="GPS" pinColor={colors.brandStrong} />
-                </MapView>
+                <View style={{height:180,borderRadius:16,overflow:"hidden"}}><HostedMap target={{lat:d.lat,lng:d.lng}}/></View>
                 <Text style={s.muted}>{d.location_at ? new Date(d.location_at).toLocaleTimeString() : "—"}</Text>
               </>
             ) : null}

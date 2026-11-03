@@ -1,6 +1,6 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {ArrowUpRight,Bell,Car,CircleAlert,CircleCheck,Copy,ExternalLink,Gauge,LayoutDashboard,LifeBuoy,Printer,RefreshCw,UserRound,X,type LucideIcon} from 'lucide-react';
+import {ArrowUpRight,Bell,Car,CircleAlert,CircleCheck,Copy,ExternalLink,Gauge,LayoutDashboard,LifeBuoy,Printer,RefreshCw,UserRound,WalletCards,X,type LucideIcon} from 'lucide-react';
 import Logo from './logo';
 import {maps} from './maps-address';
 import {allowedWorkspace,canUsePartner,customerViews,homePortal,partnerViews,type Portal} from '@/lib/workspace-access';
@@ -154,6 +154,7 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
   <aside className={'sidebar'+(partnerPortal?' partner':'')}><a className="wordmark" href={base} aria-label="DRIOZ home"><Logo/>{partnerPortal&&<span className="portal-tag">PARTNER</span>}</a>
    <span className="sidebar-label">{partnerPortal?'Partner':'Workspace'}</span>
    {nav.map(([v,text,Icon,count])=><button className={'nav-item'+(view===v?' selected':'')} key={v} onClick={()=>navigate(v)}><Icon/>{text}{!!count&&<span className="count">{count}</span>}</button>)}
+   {partnerPortal&&<a className="nav-item" href="/wallet"><WalletCards/>Wallet</a>}
    <button className={'nav-item'+(view==='account'?' selected':'')} onClick={()=>go('account')}><UserRound/>Account</button>
    {staffLinks.length>0&&<><span className="sidebar-label">Staff</span>{staffLinks.map(([href,text])=><a key={href} className="nav-item btn" href={href}><ArrowUpRight/>{text}</a>)}</>}
    <div className="sidebar-foot">{admin&&<div className="pilot-pill"><span className="dot pulse"/><span>{data.integrations?.payments?.startsWith('Razorpay')?'Live · Razorpay & wallet connected':'Private pilot · payments recorded manually'}</span></div>}<button className="user-chip ghost" style={{border:0,justifyContent:'flex-start',width:'100%',minHeight:0}} onClick={()=>go('account')}><span className="avatar">{initials(me.name)}</span><span style={{textAlign:'left'}}><strong>{me.name}</strong><small>{label(me.role)}</small></span></button></div>

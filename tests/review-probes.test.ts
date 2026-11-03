@@ -120,3 +120,19 @@ test('REVIEW PROBE: rejecting a newer evidence file does not block approval usin
  await ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Old evidence still counts'});
  assert.equal((sql.prepare('SELECT verification FROM drivers WHERE user_id=?').get(driver.id) as any).verification,'approved');
 });
+
+
+test('admin document override is explicit, audited and restricted to admins',async()=>{
+ const {ops,sql}=setup();const {owner,customer,driver}=await actors(ops);await ops.seed();
+ await ops.handle(driver,'driver/apply','POST',{cityId:'hyderabad',phone:'+919876543210',licence:'OVERRIDE123',licenceExpiry:'2030-12-31'});
+ await rejectsStatus(ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Normal approval'}),409);
+ await rejectsStatus(ops.handle(customer,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Customer attempt',override:true}),403);
+ const operator=await ops.actor({id:'operator',email:'operator@example.com',name:'Operator'});sql.prepare("UPDATE users SET role='operator' WHERE id=?").run(operator.id);operator.role='operator';
+ await rejectsStatus(ops.handle(operator,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Operator attempt',override:true}),403);
+ await ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Owner accepts manual approval',override:true});
+ assert.equal((sql.prepare('SELECT verification FROM drivers WHERE user_id=?').get(driver.id) as any).verification,'approved');
+ assert.equal((sql.prepare('SELECT count(*) AS n FROM documents WHERE owner_id=?').get(driver.id) as any).n,0);
+ const entry=sql.prepare("SELECT * FROM audit WHERE target=? AND action='partner_approval_override'").get(driver.id) as any;assert.equal(entry.actor_id,owner.id);assert.match(entry.details,/Owner accepts manual approval/);
+ sql.prepare("UPDATE drivers SET licence_expiry='2020-01-01' WHERE user_id=?").run(driver.id);
+ await rejectsStatus(ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Expired attempt',override:true}),409);
+});

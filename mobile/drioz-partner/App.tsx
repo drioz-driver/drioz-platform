@@ -1,3 +1,4 @@
+import WelcomeOffer from './src/WelcomeOffer';
 import React, { useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -118,7 +119,8 @@ function Partner() {
       >
         {w.error ? <Banner text={w.error} onClose={() => w.setError("")} /> : null}
         {toast ? <Banner tone="warn" text={toast} onClose={() => setToast("")} /> : null}
-        {tab === "home" && <DriverHome data={data} refresh={w.refresh} onWallet={() => setTab("wallet")} />}
+        {tab === "home"&&<WelcomeOffer userId={data.me.id} onVerify={()=>setTab("home")} onClaimed={()=>{void w.refresh();offers.pollNow()}}/>}
+        {tab === "home" && <DriverHome data={{...data,offerAvailability:offers.availability}} refresh={w.refresh} onWallet={() => setTab("wallet")} />}
         {tab === "wallet" && <WalletScreen onBack={() => setTab("home")} />}
         {tab === "trips" && (
           <>

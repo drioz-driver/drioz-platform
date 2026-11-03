@@ -32,6 +32,7 @@ function toOffer(raw: any, seenBookings: Set<string>): Offer {
  */
 export function useOffers({ enabled }: { enabled: boolean }) {
   const [offer, setOffer] = useState<Offer | null>(null);
+  const [availability,setAvailability]=useState<any>(null);
   const [skew, setSkew] = useState(0);
   const accepted = useRef(new Set<string>());
   const handled = useRef(new Set<string>()),
@@ -48,8 +49,8 @@ export function useOffers({ enabled }: { enabled: boolean }) {
     if (pending.current) return;
     pending.current = true;
     api("driver/offers")
-      .then((r) => consider(r.offers?.[0] || null, r.serverNow))
-      .catch(() => {})
+      .then((r) => {setAvailability(r.availability||null);consider(r.offers?.[0] || null, r.serverNow)})
+      .catch(() => setAvailability({error:"Ride requests are reconnecting. Keep the app open."}))
       .finally(() => {
         pending.current = false;
       });
@@ -76,5 +77,5 @@ export function useOffers({ enabled }: { enabled: boolean }) {
       return null;
     });
   }, []);
-  return { offer, skew, close, markAccepted: (o: Offer) => { handled.current.add(o.id); accepted.current.add(o.bookingId); }, pollNow: poll, markHandled: (id: string) => handled.current.add(id) };
+  return { offer, availability, skew, close, markAccepted: (o: Offer) => { handled.current.add(o.id); accepted.current.add(o.bookingId); }, pollNow: poll, markHandled: (id: string) => handled.current.add(id) };
 }

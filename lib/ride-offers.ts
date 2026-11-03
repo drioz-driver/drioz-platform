@@ -20,6 +20,12 @@ export function rideOffers(db:any,paymentKey?:string,clock=()=>Date.now()){
   await stmt(database,'INSERT INTO ride_offer_presence(driver_id,seen_at) VALUES(?,?) ON CONFLICT(driver_id) DO UPDATE SET seen_at=excluded.seen_at',driverId,at).run();
   if(await one(database,"SELECT id FROM bookings WHERE driver_id=? AND status IN ('assigned','arrived','in_progress') LIMIT 1",driverId))return {offers:[],serverNow:at};
   const requests=await all(database,"SELECT * FROM bookings WHERE (city_id=? OR ((city_id='india' OR city_id LIKE 'intl-%') AND CAST(? AS DOUBLE PRECISION) IS NOT NULL AND CAST(? AS BIGINT)>? AND ABS(pickup_lat-?)<0.3 AND ABS(pickup_lng-?)<0.4)) AND status='requested' AND (scheduled_at IS NULL OR scheduled_at<=?) ORDER BY created_at,id LIMIT 10 FOR UPDATE SKIP LOCKED",me.city_id,me.lat,me.location_at||0,at-120000,me.lat,me.lng,at+1800000);
+  const wallet=paymentKey?await one(database,'SELECT promo,recharge FROM driver_accounts WHERE driver_id=? AND mode=?',driverId,mode):null;
+  const availableFunds=paymentKey?Number(wallet?.promo||0)+Number(wallet?.recharge||0):Number.MAX_SAFE_INTEGER;
+  const visible=requests.filter((b:any)=>!(b.city_id==='india'||b.city_id.startsWith('intl-'))||me.location_at>at-120000&&distance(me.lat,me.lng,b.pickup_lat,b.pickup_lng)<=25);
+  const blocked=visible.filter((b:any)=>Math.max(0,Number(b.fare)-Number(b.partner_fare))>availableFunds);
+  const availability={waitingCount:visible.length,blockedCount:blocked.length,availableFunds:paymentKey?availableFunds:null,minimumRecharge:blocked.length?Math.min(...blocked.map((b:any)=>Math.max(0,Number(b.fare)-Number(b.partner_fare))-availableFunds)):0,
+   requests:blocked.slice(0,3).map((b:any)=>{let info:any={};try{info=JSON.parse(b.breakdown||'{}')}catch{}return {id:b.id,pickup:b.pickup,destination:b.destination,partnerFare:Number(b.partner_fare),localPricing:info.localPricing,requiredRecharge:Math.max(0,Number(b.fare)-Number(b.partner_fare))-availableFunds}})};
   for(const booking of requests){
    if((booking.city_id==='india'||booking.city_id.startsWith('intl-'))&&(!me.location_at||me.location_at<at-120000||distance(me.lat,me.lng,booking.pickup_lat,booking.pickup_lng)>25))continue;
    const current=await one(database,'SELECT * FROM ride_offers WHERE booking_id=?',booking.id);
@@ -40,7 +46,7 @@ export function rideOffers(db:any,paymentKey?:string,clock=()=>Date.now()){
    const {breakdown:_omit,...rest}=o;
    return {...rest,localPricing:info.localPricing,hours:info.hours??null,vehicleCategory:info.vehicleCategory??null,seconds:offerDuration/1000,pickupDistanceKm:located?Math.round(distance(Number(o.pickup_lat),Number(o.pickup_lng),Number(me.lat),Number(me.lng))*10)/10:null};
   });
-  return {offers,serverNow:clock()};
+  return {offers,availability,serverNow:clock()};
  }))}
  async function pass(driver:string,offer:string){const r=await stmt(db,"UPDATE ride_offers SET state='passed' WHERE driver_id=? AND offer_id=? AND state='offered'",driver,offer).run();if(r.meta.changes)await stmt(db,"UPDATE ride_offer_events SET outcome='passed',responded_at=? WHERE offer_id=? AND outcome IS NULL",clock(),offer).run();return {ok:true}}
  return {poll,pass};

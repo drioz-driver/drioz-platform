@@ -111,6 +111,8 @@ export default function DriverScreen({ data, refresh, onWallet }: { data: any; r
   );
   return (
     <>
+      {data.offerAvailability?.error&&<Banner text={data.offerAvailability.error}/>}
+      {d?.online&&!active&&data.offerAvailability?.blockedCount>0&&<Card><Text style={s.h3}>{data.offerAvailability.waitingCount} ride requests waiting</Text><Text style={s.text}>Add at least {new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format(data.offerAvailability.minimumRecharge/100)} to receive offers. Your acceptance balance is {money(data.offerAvailability.availableFunds)}.</Text>{data.offerAvailability.requests?.map((r:any)=><Text key={r.id} style={s.muted}>{r.pickup} → {r.destination}</Text>)}<Button title="Recharge to receive offers" onPress={()=>onWallet?.()}/></Card>}
       <SectionTitle eyebrow={t("drive.eyebrow")} title={t("drive.title")} />
       {approved && daysLeft !== undefined && daysLeft <= 30 ? (
         <Card style={{ borderColor: colors.warn, backgroundColor: colors.warnSoft }}>

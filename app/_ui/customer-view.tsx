@@ -38,7 +38,7 @@ export default function CustomerView({data,me,t,onBook}:{data:any;me:any;t:(b:an
    </div>
   </section>
 
-  {(live.length>0||requests.length>0)&&<section className="section tight customer-journeys" aria-label="Active journeys">
+  {(live.length>0||requests.length>0)&&<section className="section tight customer-journeys" id="active-journeys" aria-label="Active journeys">
    <div className="section-heading"><div><span className="eyebrow">Happening now</span><h2>Active journeys.</h2></div></div>
    <div className="trip-grid">{live.map((b:any)=><TripCard key={b.id} b={b} mode="customer" t={t(b)} before={<LiveTrack b={b}/>} after={<CustomerTripAfter b={b} t={t(b)}/>}/>)}
     {requests.map((r:any)=><section className="trip" key={r.id}>
@@ -51,7 +51,7 @@ export default function CustomerView({data,me,t,onBook}:{data:any;me:any;t:(b:an
    </div>
   </section>}
 
-  <section className="section" id="services">
+  <section className="section customer-marketing" id="services">
    <div className="section-intro"><span className="eyebrow">Three ways to ride</span><h2>A driver for every <em>kind</em> of day.</h2><p>Transparent package pricing calculated on our servers, so the fare you see is the fare you agree.</p></div>
    <div className="service-grid">
     <article className="service"><span className="tile-icon brand"><Route size={24}/></span><h3>One way</h3><p>Airport runs, late dinners, a drop across the city. Your driver takes you there and heads off.</p><div className="price-from">From <strong>{from?fmt(from):'—'}</strong></div></article>
@@ -60,7 +60,7 @@ export default function CustomerView({data,me,t,onBook}:{data:any;me:any;t:(b:an
    </div>
   </section>
 
-  <section className="section tight">
+  <section className="section tight customer-marketing">
    <div className="section-intro"><span className="eyebrow">How it works</span><h2>Booked in under a minute.</h2></div>
    <div className="how">
     <div><h3>Set your route</h3><p>Pick your journey type and choose addresses from the map search.</p></div>
@@ -70,7 +70,7 @@ export default function CustomerView({data,me,t,onBook}:{data:any;me:any;t:(b:an
    </div>
   </section>
 
-  <section className="section tight">
+  <section className="section tight customer-marketing">
    <div className="trust">
     <div><span className="eyebrow light"><ShieldCheck size={14}/>Safety by design</span><h2>Every driver is checked. Every trip is accounted for.</h2><p>We verify licences and identity, review a driving assessment, and keep an audit trail of every journey from request to completion.</p><a className="primary" href="#book" style={{marginTop:26}}>Book a driver <ArrowRight size={16}/></a></div>
     <ul>

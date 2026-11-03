@@ -110,7 +110,8 @@ function Customer() {
               places={data.places || []}
               company={data.company || null}
               draft={draft}
-              onBooked={() => {
+              onBooked={(booking) => {
+                if(booking&&!booking.requiresLocationReview)w.applyBooking(booking);
                 setDraft(null);
                 w.reload();
                 setTab("trips");

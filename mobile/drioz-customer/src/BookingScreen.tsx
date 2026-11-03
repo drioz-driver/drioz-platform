@@ -43,7 +43,7 @@ export default function BookingScreen({
   company = null,
   draft = null,
 }: {
-  onBooked: () => void;
+  onBooked: (booking?:any) => void;
   cities?: any[];
   places?: any[];
   company?: { id: string; name: string } | null;
@@ -154,11 +154,11 @@ export default function BookingScreen({
         setResult(null);
         throw Error(t("book.fareChanged"));
       }
-      await api("bookings", { quoteId: quote.id, key: key.current, ...(company && billTo === "company" ? { billTo: "company" } : {}) });
+      const booking=await api("bookings", { quoteId: quote.id, key: key.current, ...(company && billTo === "company" ? { billTo: "company" } : {}) });
       setPickup(null);
       setDrop(null);
       setPrefilled(false);
-      onBooked();
+      onBooked(booking);
     } catch (e) {
       setMessage(errorText(e, "Booking failed"));
     } finally {

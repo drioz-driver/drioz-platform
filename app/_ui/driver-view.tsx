@@ -1,5 +1,6 @@
 'use client';
 import {ArrowRight,ArrowUpRight,BadgeCheck,Car,CircleCheck,FileCheck,IndianRupee,LocateFixed,Radar,Route,ShieldCheck,Upload} from 'lucide-react';
+import {localMoney} from '@/lib/local-money';
 import DriverLocationMap from '../driver-location-map';
 import {Badge,Empty,Field,Form,Metric} from './primitives';
 import {TripCard,TripMeta,TripRoute,type TripActions} from './trip-card';
@@ -7,6 +8,7 @@ import {fmt,label,when} from './client';
 import {SearchingWheel} from './steering';
 import {useState} from 'react';
 import {Award,CalendarClock,CalendarDays,Star,TriangleAlert,WalletCards} from 'lucide-react';
+import DriverWelcomeOffer from '../driver-welcome-offer';
 import DriverWalletSummary from '../driver-wallet-summary';
 import {PartnerTripActions} from './partner-trip';
 import {Callout} from './primitives';
@@ -23,6 +25,9 @@ export default function DriverView({data,me,section,setSection,t,gps,position,sh
  const myDocs=documents.filter((d:any)=>d.owner_id===me.id);
  const docState=(k:string)=>myDocs.find((d:any)=>d.kind===k&&d.status==='approved')?'approved':myDocs.find((d:any)=>d.kind===k&&d.status==='pending')?'pending':myDocs.find((d:any)=>d.kind===k)?'rejected':'missing';
  return <>
+  <DriverWelcomeOffer userId={me.id} onVerify={()=>setSection('onboarding')}/>
+  {data.offerAvailability?.error&&<Callout icon={TriangleAlert}>{data.offerAvailability.error}</Callout>}
+  {driver?.online&&!active&&data.offerAvailability?.blockedCount>0&&<section className="panel" aria-label="Waiting ride requests" style={{marginBottom:20}}><h2>{data.offerAvailability.waitingCount} ride request{data.offerAvailability.waitingCount===1?'':'s'} waiting</h2><p>Add at least {new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format(data.offerAvailability.minimumRecharge/100)} to receive an offer. Your available acceptance balance is {fmt(data.offerAvailability.availableFunds)}. Bookings are still searching for a driver.</p>{data.offerAvailability.requests?.map((r:any)=><div className="ledger-row" key={r.id}><span>{r.pickup} → {r.destination}<small>Your earnings: {localMoney(r.partnerFare,r)}</small></span></div>)}<a className="button primary" href="/wallet">Recharge to receive offers</a></section>}
   {section==='overview'&&<>
    {data.licenceDaysLeft!=null&&data.licenceDaysLeft<=30&&<Callout icon={TriangleAlert}>{data.licenceDaysLeft<0?'Your driving licence has expired. Renew it and update your profile to keep receiving rides.':`Your driving licence expires in ${data.licenceDaysLeft} day${data.licenceDaysLeft===1?'':'s'}. Renew it and upload the new copy in Profile.`}</Callout>}
    <div className="metrics">

@@ -36,6 +36,7 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
  const [data,setData]=useState<any>(null),[requestedView,setView]=useState(home),[section,setSection]=useState('overview');
  const [loading,setLoading]=useState(true),[fatal,setFatal]=useState(''),[busy,setBusy]=useState(false),[toasts,setToasts]=useState<Toast[]>([]);
  const [codes,setCodes]=useState<Record<string,{code:string;expiresAt:number}>>({}),[detail,setDetail]=useState<any>(null),[ticket,setTicket]=useState<any>(null);
+ const [offerAvailability,setOfferAvailability]=useState<any>(null);
  const [gps,setGps]=useState(false),[position,setPosition]=useState<{lat:number;lng:number;accuracy:number;at:number}|null>(null);
  const gpsHeartbeat=useRef<ReturnType<typeof setInterval>|null>(null);
  const watch=useRef<number|null>(null),lastLocation=useRef(0),toastId=useRef(0),snapshotRequest=useRef(0),acceptingOffer=useRef(false);
@@ -70,7 +71,7 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
   setOffer(c=>c?.id===o.id?c:(c&&c.expiresAt>Date.now()+(server?server-Date.now():0)?c:o))},[]);
  const activeTrip=!!data?.bookings?.some((b:any)=>b.driver_id===data.me.id&&['assigned','arrived','in_progress'].includes(b.status));
  const pollOffers=partnerPortal&&data?.driver?.verification==='approved'&&!!data?.driver?.online&&!activeTrip;
- useEffect(()=>{if(!pollOffers)return;let active=true,pending=false;const poll=()=>{if(document.hidden||pending||acceptingOffer.current)return;pending=true;api('driver/offers').then(r=>{if(active)considerOffer(r.offers?.[0]||null,r.serverNow)}).catch(()=>{}).finally(()=>{pending=false})};poll();const timer=setInterval(poll,2000);window.addEventListener('focus',poll);return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',poll)}},[pollOffers,considerOffer]);
+ useEffect(()=>{if(!pollOffers)return;let active=true,pending=false;const poll=()=>{if(document.hidden||pending||acceptingOffer.current)return;pending=true;api('driver/offers').then(r=>{if(active){setOfferAvailability(r.availability||null);considerOffer(r.offers?.[0]||null,r.serverNow)}}).catch(()=>{if(active)setOfferAvailability({error:'Ride requests are reconnecting. Please keep this page open.'})}).finally(()=>{pending=false})};poll();const timer=setInterval(poll,2000);window.addEventListener('focus',poll);return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',poll)}},[pollOffers,considerOffer]);
  useEffect(()=>{if(!partnerPortal||!activeTrip||watch.current!==null||!navigator.permissions)return;let active=true;navigator.permissions.query({name:'geolocation'}).then(p=>{if(active&&p.state==='granted'&&watch.current===null)shareGps()}).catch(()=>{});return()=>{active=false}},[partnerPortal,activeTrip]);
  // Stop GPS automatically once a partner is offline with no active trip.
  useEffect(()=>{if(!data)return;const mine=data.bookings.some((b:any)=>b.driver_id===data.me.id&&['assigned','arrived','in_progress'].includes(b.status));if(!mine&&!data.driver?.online&&watch.current!==null){navigator.geolocation.clearWatch(watch.current);watch.current=null;if(gpsHeartbeat.current)clearInterval(gpsHeartbeat.current);gpsHeartbeat.current=null;setGps(false)}},[data]);
@@ -98,7 +99,7 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
  const pendingCount=data.pendingDriverReviews??drivers.filter((d:any)=>d.verification==='pending').length;
  const unread=notifications.filter((n:any)=>!n.read).length;
  const cityName=(id:string)=>cities.find((c:any)=>c.id===id)?.name||id;
- const nav:[string,string,LucideIcon,number?][]=partnerPortal?[['driver','Drive',Gauge],['support','Support',LifeBuoy],['notifications','Inbox',Bell,unread]]:[['customer','Book a driver',Car],...(admin?[['admin','Operations',LayoutDashboard,pendingCount] as [string,string,LucideIcon,number]]:[]),['support','Support',LifeBuoy],['notifications','Inbox',Bell,unread]];
+ const nav:[string,string,LucideIcon,number?][]=partnerPortal?[['driver','Drive',Gauge],['support','Support',LifeBuoy],['notifications','Inbox',Bell,unread]]:[['customer','Book a driver',Car],['rides','Rides',Car,data.bookings.filter((b:any)=>b.customer_id===me.id&&['requested','assigned','arrived','in_progress'].includes(b.status)).length],...(admin?[['admin','Operations',LayoutDashboard,pendingCount] as [string,string,LucideIcon,number]]:[]),['support','Support',LifeBuoy],['notifications','Inbox',Bell,unread]];
  // Staff can hop between the two portals to check both workflows; customers and drivers never see these links.
  const staffLinks:[string,string][]=['admin','operator'].includes(me.role)?(partnerPortal?[['/#admin','Operations'],['/','Customer site']]:[['/partner','Partner portal']]):[];
  const mobileNav=(()=>{const all=[...nav,['account','Account',UserRound] as [string,string,LucideIcon,number?]];return all.length>5?all.filter(([v])=>v!=='support'):all})();
@@ -108,7 +109,9 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
   onStatement:async()=>{try{setDetail({statement:await api(`bookings/${b.id}/invoice`)})}catch(e){toast(errorMessage(e),'error')}},
   onLocation:async()=>{try{const r=await api(`bookings/${b.id}/location`);setDetail({location:r.location,trip:b.id})}catch(e){toast(errorMessage(e),'error')}},
   onShare:async()=>{try{const r=await act(`bookings/${b.id}/share`,{});setDetail({shareUrl:location.origin+r.path})}catch{}}});
- const onBook=async(input:any,total:number,key:string,billTo:'personal'|'company'='personal')=>{const quote=await api('quote',input);if(quote.total!==total)throw Error('The fare has changed. Refresh the estimate before requesting a driver.');await act('bookings',{quoteId:quote.id,key,...(billTo==='company'?{billTo}:{})});setTimeout(()=>document.getElementById('journeys')?.scrollIntoView({behavior:'smooth'}),150)};
+ const navigate=(v:string)=>v==='rides'?go('customer','trips'):go(v);
+ const selected=(v:string)=>v==='rides'?view==='customer'&&section==='trips':view===v&&!(v==='customer'&&section==='trips');
+ const onBook=async(input:any,total:number,key:string,billTo:'personal'|'company'='personal')=>{const quote=await api('quote',input);if(quote.total!==total)throw Error('The fare has changed. Refresh the estimate before requesting a driver.');const receipt=await act('bookings',{quoteId:quote.id,key,...(billTo==='company'?{billTo}:{})});if(!receipt.requiresLocationReview){++snapshotRequest.current;setData((current:any)=>current?.me.id===receipt.customer_id&&!current.bookings.some((b:any)=>b.id===receipt.id)?{...current,bookings:[receipt,...current.bookings]}:current)}go('customer','trips');setTimeout(()=>document.getElementById(receipt.requiresLocationReview?'journeys':'active-journeys')?.scrollIntoView({behavior:'smooth'}),150)};
 
  const overlays=<>
   <div className="toast-stack" aria-live="polite">{toasts.map(x=><div key={x.id} role={x.tone==='error'?'alert':'status'} className={'alert '+x.tone}><span>{x.tone==='error'?<CircleAlert size={18}/>:<CircleCheck size={18} color="var(--brand-strong)"/>}{x.text}</span><button aria-label="Dismiss" onClick={()=>setToasts(t=>t.filter(y=>y.id!==x.id))}><X size={15}/></button></div>)}</div>
@@ -134,14 +137,15 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
   {ticket&&<Modal title="Support conversation" onClose={()=>setTicket(null)}><TicketThread ticket={ticket} me={me} act={act} reload={async()=>{setTicket(await api('tickets/'+ticket.ticket.id))}}/></Modal>}
  </>;
 
- if(view==='customer')return <div className="site customer-site">
+ if(view==='customer')return <div className={"site customer-site"+(section==='trips'?' customer-show-trips':'')}>
   <header className="site-header"><a href="/" aria-label="DRIOZ home"><Logo/></a>
-   <nav aria-label="Workspaces">{nav.map(([v,text,Icon,count])=><button className={view===v?'selected':''} key={v} onClick={()=>go(v)}><Icon/>{text}{!!count&&<i/>}</button>)}</nav>
+   <nav aria-label="Workspaces">{nav.map(([v,text,Icon,count])=><button className={selected(v)?'selected':''} key={v} onClick={()=>navigate(v)}><Icon/>{text}{!!count&&<i/>}</button>)}</nav>
    <button className="identity ghost" style={{color:'#fff'}} onClick={()=>go('account')}><span className="avatar" style={{width:34,height:34,fontSize:12}}>{initials(me.name)}</span><span style={{textAlign:'left'}}>{me.name}<small>{label(me.role)}</small></span></button>
   </header>
+  {section!=='trips'&&data.bookings.some((b:any)=>b.customer_id===me.id&&['requested','assigned','arrived','in_progress'].includes(b.status))&&<div className="customer-active-banner"><strong>Your booking is active</strong><button className="primary" onClick={()=>go('customer','trips')}>View booking status</button></div>}
   <CustomerView data={data} me={me} t={t} onBook={onBook} refresh={()=>refresh().catch(e=>toast(errorMessage(e),'error'))}/>
   <footer className="site-footer"><div className="cols"><div><Logo className="footer-logo"/><p style={{marginTop:14,maxWidth:320}}>A verified personal driver for your own car — whenever, wherever you need one.</p></div><div><h4>Ride</h4><ul><li><a href="#book">One way</a></li><li><a href="#book">Round trip</a></li><li><a href="#book">Outstation</a></li></ul></div><div><h4>Help</h4><ul><li><button className="link" style={{color:'inherit',fontWeight:400}} onClick={()=>go('support')}>Support</button></li><li><button className="link" style={{color:'inherit',fontWeight:400}} onClick={()=>go('notifications')}>Inbox</button></li></ul></div><div><h4>Account</h4><ul><li><button className="link" style={{color:'inherit',fontWeight:400}} onClick={()=>go('account')}>Profile</button></li><li><a href="/forgot-password">Reset password</a></li></ul></div></div><div className="base"><span>© {new Date().getFullYear()} DRIOZ. All times shown in IST.</span><span>Fares exclude tolls, parking and permits.</span></div></footer>
-  <nav className="mobile-nav" aria-label="Workspaces">{mobileNav.map(([v,text,Icon,count])=><button key={v} className={view===v?'selected':''} onClick={()=>go(v)}><Icon size={20}/>{text.split(' ')[0]}{!!count&&<i/>}</button>)}</nav>
+  <nav className="mobile-nav" aria-label="Workspaces">{mobileNav.map(([v,text,Icon,count])=><button key={v} className={selected(v)?'selected':''} onClick={()=>navigate(v)}><Icon size={20}/>{text.split(' ')[0]}{!!count&&<i/>}</button>)}</nav>
   {overlays}
  </div>;
 
@@ -149,7 +153,7 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
  return <div className="app-shell">
   <aside className={'sidebar'+(partnerPortal?' partner':'')}><a className="wordmark" href={base} aria-label="DRIOZ home"><Logo/>{partnerPortal&&<span className="portal-tag">PARTNER</span>}</a>
    <span className="sidebar-label">{partnerPortal?'Partner':'Workspace'}</span>
-   {nav.map(([v,text,Icon,count])=><button className={'nav-item'+(view===v?' selected':'')} key={v} onClick={()=>go(v)}><Icon/>{text}{!!count&&<span className="count">{count}</span>}</button>)}
+   {nav.map(([v,text,Icon,count])=><button className={'nav-item'+(view===v?' selected':'')} key={v} onClick={()=>navigate(v)}><Icon/>{text}{!!count&&<span className="count">{count}</span>}</button>)}
    <button className={'nav-item'+(view==='account'?' selected':'')} onClick={()=>go('account')}><UserRound/>Account</button>
    {staffLinks.length>0&&<><span className="sidebar-label">Staff</span>{staffLinks.map(([href,text])=><a key={href} className="nav-item btn" href={href}><ArrowUpRight/>{text}</a>)}</>}
    <div className="sidebar-foot">{admin&&<div className="pilot-pill"><span className="dot pulse"/><span>{data.integrations?.payments?.startsWith('Razorpay')?'Live · Razorpay & wallet connected':'Private pilot · payments recorded manually'}</span></div>}<button className="user-chip ghost" style={{border:0,justifyContent:'flex-start',width:'100%',minHeight:0}} onClick={()=>go('account')}><span className="avatar">{initials(me.name)}</span><span style={{textAlign:'left'}}><strong>{me.name}</strong><small>{label(me.role)}</small></span></button></div>
@@ -165,14 +169,14 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
    <main className="workspace">
     <div className="workspace-heading"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{sub}</p></div></div>
     {sectionTabs.length>1&&<div className="section-tabs" role="tablist">{sectionTabs.map(s=><button role="tab" aria-selected={activeSection===s} className={activeSection===s?'selected':''} onClick={()=>pickSection(s)} key={s}>{label(s)}{s==='partners'&&pendingCount>0&&<span className="review-count">{pendingCount}</span>}</button>)}</div>}
-    {view==='driver'&&<DriverView data={data} me={me} section={activeSection} setSection={pickSection} t={t} gps={gps} position={position} shareGps={shareGps}/>}
+    {view==='driver'&&<DriverView data={{...data,offerAvailability}} me={me} section={activeSection} setSection={pickSection} t={t} gps={gps} position={position} shareGps={shareGps}/>}
     {view==='admin'&&<AdminView data={data} me={me} section={activeSection} setSection={pickSection} goSupport={()=>go('support')} t={t}/>}
     {view==='support'&&<SupportView data={data} me={me} act={act} openTicket={openTicket}/>}
     {view==='notifications'&&<InboxView data={data} click={click}/>}
     {view==='account'&&<AccountView me={me} portal={portal} places={data.places||[]} act={act} onError={m=>toast(m,'error')}/>}
    </main>
   </div>
-  <nav className="mobile-nav" aria-label="Workspaces">{mobileNav.map(([v,text,Icon,count])=><button key={v} className={view===v?'selected':''} onClick={()=>go(v)}><Icon size={20}/>{text.split(' ')[0]}{!!count&&<i/>}</button>)}</nav>
+  <nav className="mobile-nav" aria-label="Workspaces">{mobileNav.map(([v,text,Icon,count])=><button key={v} className={selected(v)?'selected':''} onClick={()=>navigate(v)}><Icon size={20}/>{text.split(' ')[0]}{!!count&&<i/>}</button>)}</nav>
   {overlays}
  </div>;
 }

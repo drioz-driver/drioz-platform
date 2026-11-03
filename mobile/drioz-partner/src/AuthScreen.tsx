@@ -1,3 +1,4 @@
+import WelcomeOffer from './WelcomeOffer';
 import React, { useState } from "react";
 import {
   ScrollView,
@@ -78,6 +79,7 @@ export default function AuthScreen() {
           </LinearGradient>
         </ImageBackground>
         <View style={[s.content, { marginTop: -22, paddingBottom: 40 }]}>
+          <WelcomeOffer guest autoShow={mode==='signup'} onJoin={()=>setMode('signup')}/>
           <Card style={{ gap: 10 }}>
             {!configured && (
               <Banner

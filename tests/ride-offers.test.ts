@@ -13,7 +13,7 @@ async function setup(){
  let at=Date.now();
  await pg.exec("INSERT INTO cities(id,name,base,hourly) VALUES('hyd','Hyderabad',5000,0);INSERT INTO users(id,email,name,role,created_at) VALUES('a','a@example.invalid','A','driver',0),('b','b@example.invalid','B','driver',0),('c','c@example.invalid','C','customer',0);INSERT INTO drivers(user_id,city_id,phone,licence,licence_expiry,verification,online,updated_at) VALUES('a','hyd','111','A','2030-12-31','approved',1,0),('b','hyd','222','B','2030-12-31','approved',1,0);INSERT INTO driver_accounts(driver_id,mode,promo) VALUES('a','test',50000),('b','test',50000);");
  const offers=rideOffers(db,'rzp_test_unit',()=>at);
- async function booking(){const id=crypto.randomUUID();await db.prepare("INSERT INTO bookings(id,customer_id,city_id,pickup,destination,pickup_lat,pickup_lng,destination_lat,destination_lng,trip_type,transmission,fare,partner_fare,breakdown,idempotency_key,created_at,updated_at) VALUES(?,'c','hyd','Pickup','Drop',17,78,18,79,'one-way','manual',5000,4000,'{}',?,0,0)").bind(id,id).run();return id}
+ async function booking(){const id=crypto.randomUUID();await db.prepare("INSERT INTO bookings(id,customer_id,city_id,pickup,destination,pickup_lat,pickup_lng,destination_lat,destination_lng,trip_type,transmission,fare,partner_fare,breakdown,idempotency_key,created_at,updated_at) VALUES(?,'c','hyd','Pickup','Drop',17,78,18,79,'one-way','manual',5000,4000,'{}',?,?,?)").bind(id,id,at,at).run();return id}
  return {pg,db,offers,booking,advance:()=>at+=10000,at:()=>at};
 }
 
@@ -77,4 +77,31 @@ test('a general India request reaches nearby GPS-sharing drivers, never a far-aw
   await s.db.prepare("UPDATE drivers SET lat=17,lng=78,location_at=? WHERE user_id='a'").bind(s.at()).run();await s.db.prepare("UPDATE drivers SET lat=13,lng=77,location_at=? WHERE user_id='b'").bind(s.at()).run();
   assert.equal((await s.offers.poll('b')).offers.length,0);assert.equal((await s.offers.poll('a')).offers[0].id,id);
  }finally{await s.pg.close()}
+});
+
+
+test('offers stop at both booking deadlines and late acceptance cannot reserve funds',async()=>{
+ const fixture=await setup();
+ try{
+  const {db,offers,booking,at,advance}=fixture;
+  const immediate=await booking();
+  await db.prepare('UPDATE bookings SET created_at=? WHERE id=?').bind(at()-599000,immediate).run();
+  const offer=(await offers.poll('a')).offers[0];
+  assert.equal(offer.expires_at,at()+1000);
+  const scheduled=await booking();
+  await db.prepare('UPDATE bookings SET scheduled_at=? WHERE id=?').bind(at()+1000,scheduled).run();
+  advance();
+  assert.equal((await offers.poll('a')).offers.length,0);
+  const ops=operations(db,null,'owner@example.invalid','test-secret','rzp_test_unit',true);
+  const customer=await ops.actor({id:'c',email:'c@example.invalid',name:'C'});
+  const driver=await ops.actor({id:'a',email:'a@example.invalid',name:'A'});
+  await db.prepare('UPDATE bookings SET created_at=? WHERE id=?').bind(Date.now()-601000,immediate).run();
+  await db.prepare('UPDATE bookings SET scheduled_at=? WHERE id=?').bind(Date.now()-1000,scheduled).run();
+  await assert.rejects(ops.handle(driver,`bookings/${immediate}/assign`,'POST',{driverId:'a',offerId:offer.offer_id}),{status:409});
+  await ops.handle(customer,'pulse','GET',null);
+  for(const id of [immediate,scheduled]){
+   assert.equal((await db.prepare('SELECT status FROM bookings WHERE id=?').bind(id).first()).status,'no_driver');
+  }
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM driver_trip_money').first()).n,0);
+ }finally{await fixture.pg.close()}
 });

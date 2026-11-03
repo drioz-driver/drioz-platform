@@ -132,7 +132,7 @@ export function Trip({
         <View style={{ backgroundColor: colors.night, borderRadius: 18, alignItems: "center", paddingBottom: 14, overflow: "hidden" }}>
           <SearchingWheel size={70} />
           <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, marginTop: -8 }}>{t("trip.finding")}</Text>
-          <Text style={{ color: "#9FB7AE", fontSize: 13, textAlign: "center", paddingHorizontal: 16 }}>{t("trip.findingText")}</Text>
+          <Text style={{ color: "#9FB7AE", fontSize: 13, textAlign: "center", paddingHorizontal: 16 }}>{trip.scheduled_at ? "Search ends at your scheduled pickup time." : "We’ll search for up to 10 minutes."}</Text>
         </View>
       ) : null}
       {trip.status === "in_progress" ? (
@@ -230,8 +230,8 @@ export function Trip({
         ) : null}
         {trip.status === "completed" && Number(trip.paid_amount)<Number(trip.fare) ? <Button small secondary title="Pay cash to driver" disabled={busy} onPress={()=>act(`bookings/${trip.id}/payment-choice`,{method:'cash'})}/> : null}
         {trip.status === "completed" && onPay && Number(trip.paid_amount)<Number(trip.fare) ? <Button small icon="card-outline" title={t("trip.pay")} onPress={onPay} /> : null}
-        {(trip.status === "completed" || trip.status === "cancelled") && onBookAgain ? (
-          <Button small secondary icon="repeat" title={t("trip.bookAgain")} onPress={() => onBookAgain(trip)} />
+        {(["completed","cancelled","no_driver"].includes(trip.status)) && onBookAgain ? (
+          <Button small secondary icon="repeat" title={trip.status === "no_driver" ? "Try again" : t("trip.bookAgain")} onPress={() => onBookAgain(trip)} />
         ) : null}
         {["requested", "assigned", "arrived"].includes(trip.status) ? (
           <Button small variant="danger" title={t("trip.cancel")} disabled={busy} onPress={cancel} />

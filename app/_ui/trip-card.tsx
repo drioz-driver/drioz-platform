@@ -1,5 +1,6 @@
 'use client';
 import DriverPortrait from './driver-portrait';
+import {bookingDraftKey} from '@/lib/booking-draft';
 import {localMoney} from '@/lib/local-money';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Calendar,Car,Clock,Cog,FileText,KeyRound,LocateFixed,Navigation,Share2,Star,UserRound,Zap} from 'lucide-react';
@@ -50,10 +51,11 @@ export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:
  const live=['assigned','arrived','in_progress'].includes(b.status);
  const eligible=(t.drivers||[]).filter((d:any)=>d.verification==='approved'&&d.online&&d.city_id===b.city_id&&!d.disabled);
  return <article className="trip">
-  <div className="trip-top"><span>DR-{ref(b.id)}</span><Badge value={b.status}/></div>
-  {mode==='customer'&&b.status==='requested'&&<div className="finding"><SearchingWheel size={56}/><strong>Finding your driver…</strong><span>Offering your ride to the nearest verified driver. We’ll notify you the moment someone accepts.</span></div>}
+  <div className="trip-top"><span>DR-{ref(b.id)}</span><Badge value={b.status==='no_driver'?'No driver found':b.status}/></div>
+  {mode==='customer'&&b.status==='requested'&&<div className="finding"><SearchingWheel size={56}/><strong>Finding your driver…</strong><span>Offering your ride to the nearest verified driver. {b.scheduled_at?'Search ends at your scheduled pickup time.':'We’ll search for up to 10 minutes.'}</span></div>}
   {b.status==='in_progress'&&<div className="on-road"><SteeringStrip height={32}/><b><span>ON THE ROAD</span></b></div>}
   {mode==='customer'&&b.driver_id&&b.driver_name&&<DriverPortrait key={b.driver_id} bookingId={b.id} name={b.driver_name}/>}
+  {mode==='customer'&&b.status==='no_driver'&&<div className="finding"><strong>No driver found</strong><span>The search ended before a driver accepted.</span><button type="button" className="primary" onClick={()=>retryBooking(b)}>Try again</button></div>}
   {before}
   {b.status==='completed'&&<p className="helper" role="status">{Number(b.paid_amount)>=Number(b.fare)?'Paid · '+String(b.paid_methods||'payment').replaceAll('_',' '):(()=>{try{return JSON.parse(b.payment_choice||'{}').method==='cash'?'Cash selected · waiting for driver confirmation':'Payment due'}catch{return 'Payment due'}})()}</p>}
   <TripRoute b={b}/>
@@ -72,8 +74,8 @@ export function TripCard({b,mode,t,before,actions,after}:{b:any;mode:TripMode;t:
    {mode==='partner'&&b.status==='in_progress'&&<button disabled={t.busy} className="primary" onClick={()=>{if(confirm('Complete this journey? Confirm only once the trip has ended.'))t.click(`bookings/${b.id}/status`,{status:'completed'})}}>Complete journey</button>}
    {mode==='partner'&&live&&<a className="button" href={`https://www.google.com/maps/dir/?api=1&destination=${b.pickup_lat},${b.pickup_lng}`} target="_blank" rel="noreferrer"><Navigation size={15}/>Navigate to pickup</a>}
    {mode==='customer'&&live&&<button onClick={t.onLocation}><LocateFixed size={15}/>Driver location</button>}
-   {mode==='customer'&&<button onClick={t.onStatement}><FileText size={15}/>{b.invoice_number?'Invoice':'Fare statement'}</button>}
-   {mode==='customer'&&b.status!=='cancelled'&&<button onClick={t.onShare}><Share2 size={15}/>Share status</button>}
+   {mode==='customer'&&b.status!=='no_driver'&&<button onClick={t.onStatement}><FileText size={15}/>{b.invoice_number?'Invoice':'Fare statement'}</button>}
+   {mode==='customer'&&!['cancelled','no_driver'].includes(b.status)&&<button onClick={t.onShare}><Share2 size={15}/>Share status</button>}
    {mode==='customer'&&['requested','assigned','arrived'].includes(b.status)&&<button disabled={t.busy} className="subtle" onClick={()=>{if(confirm('Cancel this booking?'))t.click(`bookings/${b.id}/status`,{status:'cancelled',reason:'Customer cancelled'})}}>Cancel booking</button>}
 
     {mode==='dispatch'&&live&&<button onClick={t.onLocation}><LocateFixed size={15}/>Partner location</button>}
@@ -97,4 +99,18 @@ function StartCode({bookingId,t}:{bookingId:string;t:TripActions}){
   <button className="primary sm" disabled={t.busy} onClick={generate}><KeyRound size={15}/>{t.code?'Regenerate start code':'Get start code'}</button>
   {t.code&&<small>The previous code stops working when you regenerate.</small>}
  </div>;
+}
+
+function retryBooking(booking:any){
+ const details=breakdown(booking);
+ const fields={
+  cityId:booking.city_id,tripType:booking.trip_type,pickup:booking.pickup,destination:booking.destination,
+  pickupPoint:JSON.stringify({lat:booking.pickup_lat,lng:booking.pickup_lng}),
+  destinationPoint:JSON.stringify({lat:booking.destination_lat,lng:booking.destination_lng}),
+  transmission:booking.transmission,vehicleCategory:details.vehicleCategory||'hatchback',
+  hours:String(details.hours||''),outstationDirection:details.outstationDirection||'one-way',
+  timing:booking.scheduled_at?'schedule':'now',
+ };
+ try{sessionStorage.setItem(bookingDraftKey,JSON.stringify({savedAt:Date.now(),fields}))}catch{}
+ location.assign('/?resume=booking#customer');
 }

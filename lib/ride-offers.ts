@@ -1,3 +1,4 @@
+import {searchDeadline,searchDeadlineSql} from './booking-search.ts';
 import {distance} from './domain.ts';
 export class RideOfferError extends Error{status=409}
 const stmt=(db:any,sql:string,...args:any[])=>db.prepare(sql).bind(...args);
@@ -19,7 +20,7 @@ export function rideOffers(db:any,paymentKey?:string,clock=()=>Date.now()){
   if(!me)return {offers:[],serverNow:at};
   await stmt(database,'INSERT INTO ride_offer_presence(driver_id,seen_at) VALUES(?,?) ON CONFLICT(driver_id) DO UPDATE SET seen_at=excluded.seen_at',driverId,at).run();
   if(await one(database,"SELECT id FROM bookings WHERE driver_id=? AND status IN ('assigned','arrived','in_progress') LIMIT 1",driverId))return {offers:[],serverNow:at};
-  const requests=await all(database,"SELECT * FROM bookings WHERE (city_id=? OR ((city_id='india' OR city_id LIKE 'intl-%') AND CAST(? AS DOUBLE PRECISION) IS NOT NULL AND CAST(? AS BIGINT)>? AND ABS(pickup_lat-?)<0.3 AND ABS(pickup_lng-?)<0.4)) AND status='requested' AND (scheduled_at IS NULL OR scheduled_at<=?) ORDER BY created_at,id LIMIT 10 FOR UPDATE SKIP LOCKED",me.city_id,me.lat,me.location_at||0,at-120000,me.lat,me.lng,at+1800000);
+  const requests=await all(database,`SELECT * FROM bookings WHERE (city_id=? OR ((city_id='india' OR city_id LIKE 'intl-%') AND CAST(? AS DOUBLE PRECISION) IS NOT NULL AND CAST(? AS BIGINT)>? AND ABS(pickup_lat-?)<0.3 AND ABS(pickup_lng-?)<0.4)) AND status='requested' AND (scheduled_at IS NULL OR scheduled_at<=?) AND ${searchDeadlineSql()}>? ORDER BY created_at,id LIMIT 10 FOR UPDATE SKIP LOCKED`,me.city_id,me.lat,me.location_at||0,at-120000,me.lat,me.lng,at+1800000,at);
   const wallet=paymentKey?await one(database,'SELECT promo,recharge FROM driver_accounts WHERE driver_id=? AND mode=?',driverId,mode):null;
   const availableFunds=paymentKey?Number(wallet?.promo||0)+Number(wallet?.recharge||0):Number.MAX_SAFE_INTEGER;
   const visible=requests.filter((b:any)=>!(b.city_id==='india'||b.city_id.startsWith('intl-'))||me.location_at>at-120000&&distance(me.lat,me.lng,b.pickup_lat,b.pickup_lng)<=25);
@@ -36,15 +37,15 @@ export function rideOffers(db:any,paymentKey?:string,clock=()=>Date.now()){
    // Lexical successor rotates fairly and naturally returns to the first driver.
    const next=candidates.find((d:any)=>d.user_id>(current?.driver_id||''))||candidates[0];
    const offerId=crypto.randomUUID();
-   await stmt(database,"INSERT INTO ride_offers(booking_id,driver_id,offer_id,offered_at,expires_at,attempt,state) VALUES(?,?,?,?,?,1,'offered') ON CONFLICT(booking_id) DO UPDATE SET driver_id=excluded.driver_id,offer_id=excluded.offer_id,offered_at=excluded.offered_at,expires_at=excluded.expires_at,attempt=ride_offers.attempt+1,state='offered'",booking.id,next.user_id,offerId,at,at+offerDuration).run();
+   await stmt(database,"INSERT INTO ride_offers(booking_id,driver_id,offer_id,offered_at,expires_at,attempt,state) VALUES(?,?,?,?,?,1,'offered') ON CONFLICT(booking_id) DO UPDATE SET driver_id=excluded.driver_id,offer_id=excluded.offer_id,offered_at=excluded.offered_at,expires_at=excluded.expires_at,attempt=ride_offers.attempt+1,state='offered'",booking.id,next.user_id,offerId,at,Math.min(at+offerDuration,searchDeadline(booking))).run();
    // Keep a history row per offer for acceptance analytics and partner-health flags.
    await stmt(database,'INSERT INTO ride_offer_events(offer_id,booking_id,driver_id,attempt,offered_at,expires_at) SELECT offer_id,booking_id,driver_id,attempt,offered_at,expires_at FROM ride_offers WHERE booking_id=? ON CONFLICT(offer_id) DO NOTHING',booking.id).run();
   }
-  const offers=(await all(database,"SELECT b.id,b.pickup,b.destination,b.trip_type,b.transmission,b.scheduled_at,b.partner_fare,b.breakdown,b.pickup_lat,b.pickup_lng,o.offer_id,o.offered_at,o.expires_at,o.attempt FROM ride_offers o JOIN bookings b ON b.id=o.booking_id WHERE o.driver_id=? AND o.state='offered' AND o.expires_at>? AND b.status='requested' ORDER BY o.offered_at LIMIT 1",driverId,at)).map((o:any)=>{
+  const offers=(await all(database,`SELECT b.id,b.created_at,b.pickup,b.destination,b.trip_type,b.transmission,b.scheduled_at,b.partner_fare,b.breakdown,b.pickup_lat,b.pickup_lng,o.offer_id,o.offered_at,o.expires_at,o.attempt FROM ride_offers o JOIN bookings b ON b.id=o.booking_id WHERE o.driver_id=? AND o.state='offered' AND o.expires_at>? AND b.status='requested' AND ${searchDeadlineSql('b.')}>? ORDER BY o.offered_at LIMIT 1`,driverId,at,at)).map((o:any)=>{
    let info:any={};try{info=JSON.parse(o.breakdown||'{}')}catch{}
    const located=me.lat!=null&&me.lng!=null&&Number(me.location_at||0)>at-120000;
    const {breakdown:_omit,...rest}=o;
-   return {...rest,localPricing:info.localPricing,hours:info.hours??null,vehicleCategory:info.vehicleCategory??null,seconds:offerDuration/1000,pickupDistanceKm:located?Math.round(distance(Number(o.pickup_lat),Number(o.pickup_lng),Number(me.lat),Number(me.lng))*10)/10:null};
+   return {...rest,expires_at:Math.min(Number(o.expires_at),searchDeadline(o)),localPricing:info.localPricing,hours:info.hours??null,vehicleCategory:info.vehicleCategory??null,seconds:offerDuration/1000,pickupDistanceKm:located?Math.round(distance(Number(o.pickup_lat),Number(o.pickup_lng),Number(me.lat),Number(me.lng))*10)/10:null};
   });
   return {offers,availability,serverNow:clock()};
  }))}

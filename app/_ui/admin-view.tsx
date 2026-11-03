@@ -14,11 +14,11 @@ export default function AdminView({data,me,section,setSection,goSupport,t}:{data
  const dispatch=['admin','operator'].includes(me.role),finance=['admin','finance'].includes(me.role);
  const [city,setCity]=useState('all'),[status,setStatus]=useState('open');
  const pendingDrivers=drivers.filter((d:any)=>d.verification==='pending'),pendingCount=data.pendingDriverReviews??pendingDrivers.length;
- const live=bookings.filter((b:any)=>!['completed','cancelled'].includes(b.status));
+ const live=bookings.filter((b:any)=>!['completed','cancelled','no_driver'].includes(b.status));
  const completedFare=bookings.filter((b:any)=>b.status==='completed').reduce((s:number,b:any)=>s+Number(b.fare||0),0);
  const received=payments.reduce((s:number,p:any)=>s+(p.status==='received'?1:-1)*Number(p.amount||0),0);
  const name=(id:string)=>drivers.find((x:any)=>x.user_id===id)?.name||users?.find((u:any)=>u.id===id)?.name||id.slice(0,12);
- const filtered=bookings.filter((b:any)=>(city==='all'||b.city_id===city)&&(status==='all'||(status==='open'?!['completed','cancelled'].includes(b.status):b.status===status)));
+ const filtered=bookings.filter((b:any)=>(city==='all'||b.city_id===city)&&(status==='all'||(status==='open'?!['completed','cancelled','no_driver'].includes(b.status):b.status===status)));
  const addressQueue=(data.locationRequests||[]).filter((r:any)=>r.status==='pending'&&(city==='all'||r.city_id===city));
  return <>
   {section==='overview'&&<>
@@ -42,7 +42,7 @@ export default function AdminView({data,me,section,setSection,goSupport,t}:{data
   {section==='bookings'&&dispatch&&<>
    <div className="filter-bar">
     <Field title="City"><select value={city} onChange={e=>setCity(e.target.value)}><option value="all">All cities</option>{cities.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
-    <Field title="Status"><select value={status} onChange={e=>setStatus(e.target.value)}><option value="open">Open journeys</option><option value="all">All statuses</option>{['requested','assigned','arrived','in_progress','completed','cancelled'].map(s=><option key={s} value={s}>{label(s)}</option>)}</select></Field>
+    <Field title="Status"><select value={status} onChange={e=>setStatus(e.target.value)}><option value="open">Open journeys</option><option value="all">All statuses</option>{['requested','assigned','arrived','in_progress','completed','cancelled','no_driver'].map(s=><option key={s} value={s}>{s==='no_driver'?'No driver found':label(s)}</option>)}</select></Field>
     <p>Latest 100 journeys. Scheduled requests stay in dispatch until assigned.</p>
    </div>
    <LiveDispatch data={data}/>

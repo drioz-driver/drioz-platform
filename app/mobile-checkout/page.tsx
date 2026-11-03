@@ -29,13 +29,15 @@ export default function MobileCheckout(){
   }catch(e){setError(e instanceof Error?e.message:'Checkout could not open.');}
   finally{setBusy(false)}
  }
- return <main className="location-search-page">
+ return <main className="location-search-page mobile-checkout-page">
+  <img src="/drioz-logo.png" alt="DRIOZ" width={168} height={58} className="mobile-checkout-logo"/>
   <p className="eyebrow">DRIOZ SECURE CHECKOUT</p>
   <h1>{done?'Payment submitted':'Pay with Razorpay'}</h1>
   {done?<p>Return to the DRIOZ app to check confirmation.</p>:order&&<>
    <p>Amount: {new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(order.amount/100)}</p>
    <button className="primary" disabled={busy} onClick={pay}>{busy?'Opening checkout…':'Continue to payment'}</button>
   </>}
+  {!order&&!error&&<p role="status">Preparing your secure checkout…</p>}
   {error&&<p role="alert">{error}</p>}
  </main>;
 }

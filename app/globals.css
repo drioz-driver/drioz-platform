@@ -1206,3 +1206,6 @@ form.inline-form .form-message{flex-basis:100%;margin:0}
 .customer-journeys .start-code-control small{text-align:left;white-space:normal}
 .customer-journeys .start-code-control .code{font-size:24px;letter-spacing:.16em}
 .customer-journeys .start-code-control button{max-width:100%;white-space:normal}
+
+.mobile-checkout-page{max-width:500px;margin:clamp(20px,8vh,72px) auto;padding:clamp(20px,5vw,36px);border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.mobile-checkout-logo{display:block;width:168px;height:auto;max-width:100%;margin:0 0 24px}

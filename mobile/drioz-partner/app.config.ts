@@ -51,7 +51,7 @@ const config: ExpoConfig = {
     "expo-document-picker",
     "expo-web-browser",
     ...(apple ? ["expo-apple-authentication"] : []),
-    ["expo-splash-screen", { image: "./assets/splash.png", imageWidth: 240, resizeMode: "contain", backgroundColor: NIGHT }],
+    ["expo-splash-screen", { image: "./assets/splash.png", imageWidth: 240, android: { imageWidth: 140 }, resizeMode: "contain", backgroundColor: NIGHT }],
     ["expo-notifications", { color: "#00E699" }],
     [
       "expo-image-picker",

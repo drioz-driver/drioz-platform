@@ -118,6 +118,8 @@ test("native route excludes staff and mutation endpoints from the app surface", 
   ])
     assert.equal(mobilePathAllowed(path, "POST"), false);
   assert.equal(mobilePathAllowed("driver/location", "POST"), true);
+  assert.equal(mobilePathAllowed("bookings/123/payment-choice", "POST"), true);
+  assert.equal(mobilePathAllowed("bookings/123/cash-received", "POST"), true);
   assert.equal(mobilePathAllowed("bookings/123/invoice", "GET"), true);
 });
 test("native customer can estimate and book without browser cookies, with private trip isolation", async () => {

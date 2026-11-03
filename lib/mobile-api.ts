@@ -110,7 +110,7 @@ export function mobilePathAllowed(path: string, method: string) {
     ].includes(path) ||
     /^places\/[^/]+\/delete$/.test(path) ||
     /^bookings\/[^/]+\/(rate|inspection|sos|message|share)$/.test(path) ||
-    /^bookings\/[^/]+\/(assign|status|start-code)$/.test(path) ||
+    /^bookings\/[^/]+\/(assign|status|start-code|payment-choice|cash-received)$/.test(path) ||
     /^tickets\/[^/]+$/.test(path) ||
     /^location-requests\/[^/]+\/cancel$/.test(path)
   );

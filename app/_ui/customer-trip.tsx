@@ -67,9 +67,10 @@ export function CustomerSos({b,t}:{b:any;t:TripActions}){
 /** Below the action row: online payment, rating and SOS. */
 export function CustomerTripAfter({b,t}:{b:any;t:TripActions}){
  const live=['assigned','arrived','in_progress'].includes(b.status);
+ const cashChosen=(()=>{try{return JSON.parse(b.payment_choice||'{}').method==='cash'}catch{return false}})();
  return <>
   {(live||sosAvailable(b))&&<div className="actions" style={{marginTop:10}}><CustomerSos b={b} t={t}/></div>}
-  {b.status==='completed'&&<div className="actions" style={{marginTop:10}}>{Number(b.paid_amount)<Number(b.fare)&&<><button disabled={t.busy} onClick={()=>t.click(`bookings/${b.id}/payment-choice`,{method:'cash'})}>Pay cash to driver</button><a className="button primary" href="/wallet"><CreditCard size={15}/>Pay online or with wallet</a></>}
+  {b.status==='completed'&&<div className="actions" style={{marginTop:10}}>{Number(b.paid_amount)<Number(b.fare)&&<><button disabled={t.busy||cashChosen} onClick={()=>t.click(`bookings/${b.id}/payment-choice`,{method:'cash'})}>{cashChosen?'Cash selected':'Pay cash to driver'}</button><a className="button primary" href="/wallet"><CreditCard size={15}/>Pay online or with wallet</a></>}
    <SavePlace t={t} address={b.pickup} lat={b.pickup_lat} lng={b.pickup_lng} what="pickup"/>{b.trip_type!=='return'&&<SavePlace t={t} address={b.destination} lat={b.destination_lat} lng={b.destination_lng} what="drop"/>}</div>}
   {localPricing(b.breakdown)&&<p className="helper">Cash fare uses the booking’s local currency. Online payments and wallet use INR: {fmt(b.fare)}.</p>}
   <RateDriver b={b} t={t}/>

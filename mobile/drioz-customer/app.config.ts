@@ -40,7 +40,7 @@ const config: ExpoConfig = {
     "expo-secure-store",
     "expo-web-browser",
     ...(apple ? ["expo-apple-authentication"] : []),
-    ["expo-splash-screen", { image: "./assets/splash.png", imageWidth: 220, resizeMode: "contain", backgroundColor: NIGHT }],
+    ["expo-splash-screen", { image: "./assets/splash.png", imageWidth: 220, android: { imageWidth: 140 }, resizeMode: "contain", backgroundColor: NIGHT }],
     ["expo-location", { locationWhenInUsePermission: "DRIOZ uses your location to set your pickup point and to share it with our safety team if you press SOS." }],
     ["expo-notifications", { color: "#00E699" }],
   ],

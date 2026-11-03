@@ -78,7 +78,9 @@ export default function Platform({portal='customer'}:{portal?:Portal}){
 
  function go(v:string,s='overview'){history.pushState(null,'','#'+(s==='overview'?v:v+'/'+s));setView(v);setSection(s);setDetail(null);setTicket(null);window.scrollTo({top:0})}
  function pickSection(s:string){history.pushState(null,'','#'+(s==='overview'?view:view+'/'+s));setSection(s)}
- async function act(path:string,payload:unknown){setBusy(true);try{const result=await api(path,payload);if(partnerPortal&&path==='driver/availability'&&(payload as any)?.online&&watch.current===null)shareGps();await refresh().catch(()=>toast('Update saved. Reconnecting the dashboard.'));toast(result?.message||(result?.requiresLocationReview?'Request received. Operations will verify your addresses before assigning a driver.':'Updated successfully.'));return result}catch(e){toast(errorMessage(e,'Request failed'),'error');throw e}finally{setBusy(false)}}
+ async function act(path:string,payload:unknown){setBusy(true);try{const result=await api(path,payload);if(partnerPortal&&path==='driver/availability'&&(payload as any)?.online&&watch.current===null)shareGps();const paymentChoice=path.match(/^bookings\/([^/]+)\/payment-choice$/);
+ if(paymentChoice&&result?.ok)setData((current:any)=>current?{...current,bookings:current.bookings.map((b:any)=>b.id===paymentChoice[1]?{...b,payment_choice:JSON.stringify(payload)}:b)}:current);
+ void refresh().catch(()=>{});toast(result?.message||(result?.requiresLocationReview?'Request received. Operations will verify your addresses before assigning a driver.':'Updated successfully.'));return result}catch(e){toast(errorMessage(e,'Request failed'),'error');throw e}finally{setBusy(false)}}
  async function click(path:string,payload:unknown){try{await act(path,payload)}catch{}}
  function shareGps(){
   if(!navigator.geolocation){toast('Location is unavailable on this device','error');return}

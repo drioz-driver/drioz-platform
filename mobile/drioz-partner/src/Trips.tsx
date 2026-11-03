@@ -48,7 +48,7 @@ export function Trip({ trip, refresh }: { trip: any; refresh: () => Promise<void
     setNotice("");
     try {
       const r = await api(path, data);
-      if (data !== undefined) await refresh().catch(() => setNotice("Update saved. The dashboard will reconnect automatically."));
+      if (data !== undefined) void refresh().catch(() => setNotice("Update saved. The dashboard will reconnect automatically."));
       if (success || r?.message) setNotice(r?.message || success);
       return r;
     } catch (e) {

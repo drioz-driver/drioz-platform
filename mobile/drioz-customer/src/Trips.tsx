@@ -42,12 +42,14 @@ export function Trip({
     [error, setError] = useState(""),
     [sosSent, setSosSent] = useState(false),
     [statement, setStatement] = useState<any>(null);
+  const [cashSelected,setCashSelected]=useState(false);
   async function act(path: string, data?: unknown) {
     setBusy(true);
     setError("");
     try {
       const r = await api(path, data);
-      if (data !== undefined) await refresh().catch(() => {});
+      if(path.endsWith("/payment-choice")&&r?.ok)setCashSelected(true);
+      if (data !== undefined) void refresh().catch(() => {});
       return r;
     } catch (e) {
       setError(errorText(e, "Request failed"));
@@ -228,7 +230,7 @@ export function Trip({
         {active || trip.status === "requested" ? (
           <Button small secondary icon="share-social-outline" title={t("trip.share")} disabled={busy} onPress={shareLive} />
         ) : null}
-        {trip.status === "completed" && Number(trip.paid_amount)<Number(trip.fare) ? <Button small secondary title="Pay cash to driver" disabled={busy} onPress={()=>act(`bookings/${trip.id}/payment-choice`,{method:'cash'})}/> : null}
+        {trip.status === "completed" && Number(trip.paid_amount)<Number(trip.fare) ? <Button small secondary title={cashSelected||parse(trip.payment_choice).method==='cash'?"Cash selected":"Pay cash to driver"} disabled={busy||cashSelected||parse(trip.payment_choice).method==='cash'} onPress={()=>act(`bookings/${trip.id}/payment-choice`,{method:'cash'})}/> : null}
         {trip.status === "completed" && onPay && Number(trip.paid_amount)<Number(trip.fare) ? <Button small icon="card-outline" title={t("trip.pay")} onPress={onPay} /> : null}
         {(["completed","cancelled","no_driver"].includes(trip.status)) && onBookAgain ? (
           <Button small secondary icon="repeat" title={trip.status === "no_driver" ? "Try again" : t("trip.bookAgain")} onPress={() => onBookAgain(trip)} />
@@ -237,7 +239,7 @@ export function Trip({
           <Button small variant="danger" title={t("trip.cancel")} disabled={busy} onPress={cancel} />
         ) : null}
       </View>
-      {trip.status==='completed'&&<Text style={s.muted}>{Number(trip.paid_amount)>=Number(trip.fare)?'Paid · '+String(trip.paid_methods||'payment'):parse(trip.payment_choice).method==='cash'?'Cash selected · waiting for driver confirmation':'Payment due'}</Text>}
+      {trip.status==='completed'&&<Text style={s.muted}>{Number(trip.paid_amount)>=Number(trip.fare)?'Paid · '+String(trip.paid_methods||'payment'):(cashSelected||parse(trip.payment_choice).method==='cash')?'Cash selected · waiting for driver confirmation':'Payment due'}</Text>}
       {localPricing(trip.breakdown)&&<Text style={s.muted}>Cash: {money(trip.fare)}. Online/wallet settlement: {localMoney(trip.fare)}.</Text>}
       {statement ? (
         <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.line }}>

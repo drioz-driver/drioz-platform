@@ -119,7 +119,7 @@ function Partner() {
       >
         {w.error ? <Banner text={w.error} onClose={() => w.setError("")} /> : null}
         {toast ? <Banner tone="warn" text={toast} onClose={() => setToast("")} /> : null}
-        {tab === "home"&&<WelcomeOffer userId={data.me.id} onVerify={()=>setTab("home")} onClaimed={()=>{void w.refresh();offers.pollNow()}}/>}
+        {tab === "home"&&<WelcomeOffer key={d?.verification||"new"} userId={data.me.id} onVerify={()=>setTab("home")} onClaimed={()=>{void w.refresh();offers.pollNow()}}/>}
         {tab === "home" && <DriverHome data={{...data,offerAvailability:offers.availability}} refresh={w.refresh} onWallet={() => setTab("wallet")} />}
         {tab === "wallet" && <WalletScreen onBack={() => setTab("home")} />}
         {tab === "trips" && (

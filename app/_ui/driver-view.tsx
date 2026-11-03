@@ -25,7 +25,7 @@ export default function DriverView({data,me,section,setSection,t,gps,position,sh
  const myDocs=documents.filter((d:any)=>d.owner_id===me.id);
  const docState=(k:string)=>myDocs.find((d:any)=>d.kind===k&&d.status==='approved')?'approved':myDocs.find((d:any)=>d.kind===k&&d.status==='pending')?'pending':myDocs.find((d:any)=>d.kind===k)?'rejected':'missing';
  return <>
-  <DriverWelcomeOffer userId={me.id} onVerify={()=>setSection('onboarding')}/>
+  <DriverWelcomeOffer key={driver?.verification||"new"} userId={me.id} onVerify={()=>setSection('onboarding')}/>
   {data.offerAvailability?.error&&<Callout icon={TriangleAlert}>{data.offerAvailability.error}</Callout>}
   {driver?.online&&!active&&data.offerAvailability?.blockedCount>0&&<section className="panel" aria-label="Waiting ride requests" style={{marginBottom:20}}><h2>{data.offerAvailability.waitingCount} ride request{data.offerAvailability.waitingCount===1?'':'s'} waiting</h2><p>Add at least {new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format(data.offerAvailability.minimumRecharge/100)} to receive an offer. Your available acceptance balance is {fmt(data.offerAvailability.availableFunds)}. Bookings are still searching for a driver.</p>{data.offerAvailability.requests?.map((r:any)=><div className="ledger-row" key={r.id}><span>{r.pickup} → {r.destination}<small>Your earnings: {localMoney(r.partnerFare,r)}</small></span></div>)}<a className="button primary" href="/wallet">Recharge to receive offers</a></section>}
   {section==='overview'&&<>

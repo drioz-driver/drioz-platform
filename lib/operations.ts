@@ -183,6 +183,7 @@ export function operations(db:DB,bucket:any,ownerEmail:string,pinSecret:string='
   }
   if(parts[0]==='bookings'&&parts.length===3){
    const action=parts[2];const b=action==='assign'&&!admins.includes(a.role)?await one("SELECT * FROM bookings WHERE id=? AND (status='requested' OR driver_id=?)",parts[1],a.id):await scopedTrip(a,parts[1]);if(!b)fail(404,'Trip not found');
+   if(action==='customer-profile'&&method==='GET'){requireRole(a,['admin']);const customer=await one('SELECT id,name,email,phone,role,disabled,created_at FROM users WHERE id=?',b.customer_id);if(!customer)fail(404,'Customer not found');return {customer};}
    if(action==='location'&&method==='GET'){const p=b.driver_id?await one('SELECT lat,lng,location_at FROM drivers WHERE user_id=?',b.driver_id):null;const fresh=p&&p.location_at>now()-120000&&!['completed','cancelled'].includes(b.status)?p:null;const toPickup=b.status!=='in_progress';const target=toPickup?{lat:b.pickup_lat,lng:b.pickup_lng}:{lat:b.destination_lat,lng:b.destination_lng};const km=fresh?Math.round(distance(fresh.lat,fresh.lng,target.lat,target.lng)*10)/10:null;return {location:fresh,target:{...target,kind:toPickup?'pickup':'destination'},distanceKm:km,etaMinutes:km==null?null:b.status==='arrived'?0:etaMinutes(km),status:b.status}}
    if(action==='auto-assign'&&method==='POST'){
     requireRole(a,admins);if(b.status!=='requested')fail(409,'Trip is not awaiting assignment');

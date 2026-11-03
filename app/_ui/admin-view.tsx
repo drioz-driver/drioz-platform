@@ -3,9 +3,9 @@ import {useEffect,useState} from 'react';
 import {SteeringWheel} from './steering';
 import {Activity,ArrowUpRight,Building2,CircleCheck,Download,FileText,Headphones,IndianRupee,MapPinned,Plug,Route,ShieldCheck,Users,Wallet} from 'lucide-react';
 import DriverReviewSummary from '../driver-review-summary';
-import {Badge,Callout,Empty,Field,Form,Metric} from './primitives';
+import {Badge,Callout,Empty,Field,Form,Metric,Modal} from './primitives';
 import {TripCard,type TripActions} from './trip-card';
-import {fmt,label,ref,tripTypeName,when} from './client';
+import {api,errorMessage,fmt,label,ref,tripTypeName,when} from './client';
 import {Analytics,Companies,Incentives,LiveMap,Pricing,ShiftPlans} from './admin-extra';
 
 export default function AdminView({data,me,section,setSection,goSupport,t}:{data:any;me:any;section:string;setSection:(s:string)=>void;goSupport:()=>void;t:(b:any)=>TripActions}){
@@ -48,7 +48,7 @@ export default function AdminView({data,me,section,setSection,goSupport,t}:{data
    {addressQueue.length>0&&<><div className="section-heading"><h2>Address verification</h2><span>{addressQueue.length} PENDING</span></div><div className="trip-grid" style={{marginBottom:28}}>{addressQueue.map((r:any)=><section className="panel" key={r.id}><div className="section-heading"><h2 style={{fontSize:16}}>{r.pickup} → {r.destination}</h2><Badge value="pending"/></div><p>{tripTypeName(r.tripType)}{r.hours?` · ${r.hours} hours`:''} · {fmt(r.fare)} · {base.cityName(r.city_id)}</p>
     <Form button="Verify & send to dispatch" onSubmit={f=>base.act(`location-requests/${r.id}/verify`,{pickupPoint:{lat:Number(f.get('pickupLat')),lng:Number(f.get('pickupLng'))},...(r.tripType!=='return'?{destinationPoint:{lat:Number(f.get('destinationLat')),lng:Number(f.get('destinationLng'))}}:{})})}><div className="fields"><Field title="Pickup latitude"><input name="pickupLat" type="number" step="any" min="-90" max="90" required/></Field><Field title="Pickup longitude"><input name="pickupLng" type="number" step="any" min="-180" max="180" required/></Field>{r.tripType!=='return'&&<><Field title="Drop latitude"><input name="destinationLat" type="number" step="any" min="-90" max="90" required/></Field><Field title="Drop longitude"><input name="destinationLng" type="number" step="any" min="-180" max="180" required/></Field></>}</div></Form>
     <button className="subtle" disabled={base.busy} onClick={()=>base.click(`location-requests/${r.id}/cancel`,{})}>Reject request</button></section>)}</div></>}
-   <div className="trip-grid">{filtered.length?filtered.map((b:any)=><TripCard key={b.id} b={b} mode="dispatch" t={t(b)}/>):<Empty icon={Route} title="A clear dispatch queue." text="Journeys matching these filters will appear here."/>}</div>
+   <div className="trip-grid">{filtered.length?filtered.map((b:any)=><TripCard key={b.id} b={b} mode="dispatch" t={t(b)} before={me.role==='admin'?<BookingCustomerProfile bookingId={b.id}/>:undefined}/>):<Empty icon={Route} title="A clear dispatch queue." text="Journeys matching these filters will appear here."/>}</div>
   </>}
 
   {section==='partners'&&dispatch&&<div className="trip-grid">{drivers.length?drivers.map((d:any)=>{const docs=documents.filter((doc:any)=>doc.owner_id===d.user_id);return <section className="panel" key={d.user_id}>
@@ -127,4 +127,11 @@ function LiveDispatch({data}:{data:any}){
     {live?<div className="live-offer">Offered to <strong>{live.driver_name}</strong> · round {live.round}<b className={left<=8?'urgent':''}>{left}s</b></div>:<Badge value="waiting for a free partner" tone="warn"/>}</div>})}</div>
   :<p className="helper">No rides waiting — every request has a partner.</p>}
  </section>;
+}
+
+
+function BookingCustomerProfile({bookingId}:{bookingId:string}){
+ const [open,setOpen]=useState(false),[customer,setCustomer]=useState<any>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ async function show(){setOpen(true);setCustomer(null);setError('');setBusy(true);try{const result=await api(`bookings/${bookingId}/customer-profile`);setCustomer(result.customer)}catch(e){setError(errorMessage(e))}finally{setBusy(false)}}
+ return <><button type="button" className="button" style={{marginBottom:16}} onClick={show}>View customer profile</button>{open&&<Modal title="Customer profile" onClose={()=>setOpen(false)}><h2>Customer profile</h2>{busy&&<p role="status">Loading customer details…</p>}{error&&<p role="alert" className="form-message err">{error}</p>}{customer&&<div className="list" style={{overflowWrap:'anywhere'}}><div className="ledger-row"><small>Name</small><strong>{customer.name}</strong></div><div className="ledger-row"><small>Email</small><span>{customer.email||'Not provided'}</span></div><div className="ledger-row"><small>Mobile</small><span>{customer.phone||'Not provided'}</span></div><div className="ledger-row"><small>Joined</small><span>{when(customer.created_at)}</span></div><div className="ledger-row"><small>Account status</small><Badge value={customer.disabled?'disabled':'active'}/></div></div>}</Modal>}</>;
 }

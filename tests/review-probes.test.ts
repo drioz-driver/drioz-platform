@@ -136,3 +136,12 @@ test('admin document override is explicit, audited and restricted to admins',asy
  sql.prepare("UPDATE drivers SET licence_expiry='2020-01-01' WHERE user_id=?").run(driver.id);
  await rejectsStatus(ops.handle(owner,`drivers/${driver.id}/review`,'POST',{status:'approved',note:'Expired attempt',override:true}),409);
 });
+
+
+test('only admin can open the booking customer profile; driver, customer and staff cannot',async()=>{
+ const {ops,sql}=setup();const {owner,customer,driver,other}=await actors(ops);const b=await trip(ops,owner,customer);
+ sql.prepare('UPDATE users SET phone=? WHERE id=?').run('+919876543210',customer.id);
+ const result=await ops.handle(owner,`bookings/${b.id}/customer-profile`,'GET',null);assert.equal(result.customer.id,customer.id);assert.equal(result.customer.phone,'+919876543210');assert.equal(result.customer.email,customer.email);
+ for(const a of [customer,driver,other])await rejectsStatus(ops.handle(a,`bookings/${b.id}/customer-profile`,'GET',null),403);
+ for(const role of ['operator','support','finance']){const a=await ops.actor({id:'profile-'+role,email:role+'@example.com',name:role});a.role=role;sql.prepare('UPDATE users SET role=? WHERE id=?').run(role,a.id);await rejectsStatus(ops.handle(a,`bookings/${b.id}/customer-profile`,'GET',null),403);}
+});

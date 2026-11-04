@@ -48,7 +48,9 @@ export function postgresDatabase() {
   if (!process.env.DATABASE_URL) return undefined;
   if (!pool) pool = new Pool({
     ...postgresOptions(process.env.DATABASE_URL),
-    max: 3, idleTimeoutMillis: 10000, connectionTimeoutMillis: 10000,
+    // Serverless instances each own a separate pool. Keep one connection per warm instance
+    // until transaction-pooler configuration and load tests are verified.
+    max: 1, idleTimeoutMillis: 10000, connectionTimeoutMillis: 10000,
   });
   const active = pool;
   type Isolation = 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';

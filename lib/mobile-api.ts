@@ -1,5 +1,7 @@
 import { managedIdentity } from "./auth/identity.ts";
 import { operations, ApiError } from "./operations.ts";
+import { runtimeOptions, type DriozRuntime } from "./runtime-options.ts";
+import { databaseOutOfDate } from "./migrations-pending.ts";
 type Runtime = {
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
@@ -9,6 +11,22 @@ type Runtime = {
   TRIP_PIN_SECRET?: string;
   RAZORPAY_KEY_ID?: string;
 };
+// Warm server instances remember a verified access token briefly, so polling and pricing calls
+// skip a round trip to Supabase Auth. Suspension is still enforced on every request by ops.actor().
+const IDENTITY_TTL_MS = 60_000;
+const verified = new Map<string, { identity: any; until: number }>();
+async function tokenKey(token: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function tokenExpiry(token: string) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    return typeof payload.exp === "number" ? payload.exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
 export async function mobileIdentity(
   request: Request,
   runtime: Runtime,
@@ -19,12 +37,28 @@ export async function mobileIdentity(
   if (!match) throw new ApiError(401, "Sign in to DRIOZ");
   if (!runtime.SUPABASE_URL || !runtime.SUPABASE_PUBLISHABLE_KEY)
     throw new ApiError(503, "Authentication is not configured");
+  const key = fetcher === fetch ? await tokenKey(match[1]) : "";
+  const cached = key ? verified.get(key) : undefined;
+  if (cached && cached.until > Date.now()) return cached.identity;
+  const identity = await verifyIdentity(match[1], runtime, fetcher);
+  const until = Math.min(Date.now() + IDENTITY_TTL_MS, tokenExpiry(match[1]));
+  if (key && until > Date.now()) {
+    if (verified.size >= 5000) verified.delete(verified.keys().next().value as string);
+    verified.set(key, { identity, until });
+  }
+  return identity;
+}
+async function verifyIdentity(
+  token: string,
+  runtime: Runtime,
+  fetcher: typeof fetch,
+) {
   const response = await fetcher(
-    runtime.SUPABASE_URL.replace(/\/$/, "") + "/auth/v1/user",
+    runtime.SUPABASE_URL!.replace(/\/$/, "") + "/auth/v1/user",
     {
       headers: {
-        apikey: runtime.SUPABASE_PUBLISHABLE_KEY,
-        Authorization: "Bearer " + match[1],
+        apikey: runtime.SUPABASE_PUBLISHABLE_KEY!,
+        Authorization: "Bearer " + token,
       },
       signal: AbortSignal.timeout(8000),
     },
@@ -42,16 +76,22 @@ export function mobilePathAllowed(path: string, method: string) {
   if (method === "GET")
     return (
       path === "snapshot" ||
+      path === "pulse" ||
+      path === "driver/profile-photo" ||
       path === "driver/offers" ||
-      /^bookings\/[^/]+\/(invoice|location)$/.test(path) ||
+      /^bookings\/[^/]+\/inspections$/.test(path) ||
+      /^inspections\/[^/]+\/photos\/\d$/.test(path) ||
+      /^bookings\/[^/]+\/(invoice|location|driver-photo)$/.test(path) ||
       /^tickets\/[^/]+$/.test(path) ||
       /^documents\/[^/]+$/.test(path)
     );
   if (method !== "POST") return false;
+  if (path === "driver/profile-photo/remove") return true;
   return (
     [
       "coverage",
       "estimate",
+      "price",
       "quote",
       "bookings",
       "driver/apply",
@@ -61,8 +101,16 @@ export function mobilePathAllowed(path: string, method: string) {
       "documents",
       "tickets",
       "notifications/read",
+      "places",
+      "push/register",
+      "push/unregister",
+      "account/profile",
+      "account/delete",
+      "driver/plan",
     ].includes(path) ||
-    /^bookings\/[^/]+\/(assign|status|start-code)$/.test(path) ||
+    /^places\/[^/]+\/delete$/.test(path) ||
+    /^bookings\/[^/]+\/(rate|inspection|sos|message|share)$/.test(path) ||
+    /^bookings\/[^/]+\/(assign|status|start-code|payment-choice|cash-received)$/.test(path) ||
     /^tickets\/[^/]+$/.test(path) ||
     /^location-requests\/[^/]+\/cancel$/.test(path)
   );
@@ -109,6 +157,7 @@ export async function handleMobile(
       runtime.TRIP_PIN_SECRET || "",
       runtime.RAZORPAY_KEY_ID,
       true,
+      runtimeOptions(runtime as unknown as DriozRuntime),
     );
     const actor = await ops.actor(identity);
     let data: any = null;
@@ -119,7 +168,7 @@ export async function handleMobile(
       );
       const body = await boundedBody(
         request,
-        multipart ? 6 * 1024 * 1024 : 20000,
+        multipart ? 4_400_000 : 20000,
       );
       if (multipart)
         request = new Request(request.url, {
@@ -135,7 +184,13 @@ export async function handleMobile(
         }
       }
     }
-    const result = await ops.handle(actor, path, request.method, data, request);
+    // The dashboard snapshot reads ~25 tables: run it on one connection with one consistent view.
+    const result =
+      path === "snapshot" && request.method === "GET" && runtime.DB.readSnapshot
+        ? await runtime.DB.readSnapshot((db: any) =>
+            operations(db, runtime.BUCKET, runtime.DRIOZ_OWNER_EMAIL || "", runtime.TRIP_PIN_SECRET || "", runtime.RAZORPAY_KEY_ID, true,
+              runtimeOptions(runtime as unknown as DriozRuntime)).handle(actor, path, request.method, data, request))
+        : await ops.handle(actor, path, request.method, data, request);
     if (result instanceof Response) {
       const h = new Headers(result.headers);
       Object.entries(headers).forEach(([k, v]) => h.set(k, v));
@@ -143,6 +198,17 @@ export async function handleMobile(
     }
     return Response.json(result, { headers });
   } catch (error) {
+    if (!(error instanceof ApiError))
+      console.error(
+        "mobile request failed",
+        path,
+        error instanceof Error ? error.message : "Unknown error",
+      );
+    if (!(error instanceof ApiError) && databaseOutOfDate(error))
+      return Response.json(
+        { message: "The DRIOZ server database is out of date. Ask your administrator to apply the latest migrations.", code: "migrations_pending" },
+        { status: 503, headers },
+      );
     if (error instanceof ApiError)
       return Response.json(
         { message: error.message },

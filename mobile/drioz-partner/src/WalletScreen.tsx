@@ -1,0 +1,49 @@
+import DriverWalletPanel from './DriverWalletPanel';
+import React,{useEffect,useRef,useState} from 'react';
+import {Text,View,Pressable} from 'react-native';
+import * as Crypto from 'expo-crypto';
+import {AppState,Linking} from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import {api,money} from './api';
+import {Button,Card,Disclosure,Field,Loading,colors,s} from './ui';
+export default function WalletScreen({onBack}:{onBack:()=>void}){
+ const [data,D]=useState<any>(null),[amount,A]=useState('500'),[busy,B]=useState(false),[error,E]=useState(''),[message,M]=useState('');const checkoutOpened=useRef(false),processing=useRef(false),active=useRef(true);
+ async function refresh(){const result=await api('billing/wallet');if(active.current)D(result)}
+ useEffect(()=>{active.current=true;refresh().catch(e=>{if(active.current)E(e.message)});return()=>{active.current=false}},[]);
+ useEffect(()=>{
+  const listener=AppState.addEventListener('change',state=>{
+   if(state==='active'&&checkoutOpened.current&&!processing.current)void check();
+  });
+  return()=>listener.remove();
+ },[]);
+ async function online(bookingId?:string){
+  if(processing.current)return;
+  if(checkoutOpened.current){await check();return;}
+  processing.current=true;B(true);E('');M('');
+  try{
+   const n=Number(amount)*100;
+   if(!bookingId&&(!Number.isSafeInteger(n)||n<100||n>1000000))throw Error('Enter an amount between ₹1 and ₹10,000.');
+   const key=Crypto.randomUUID();
+   const order=await api('billing/create-order',{purpose:bookingId?'booking':data?.driver?'driver_topup':'topup',...(bookingId?{bookingId}:{amount:n}),currency:'INR',key});
+   const params=new URLSearchParams({order:order.order_id,key});
+   checkoutOpened.current=true;
+   const result=await WebBrowser.openBrowserAsync('https://www.drioz.com/mobile-checkout#'+params.toString());
+   if(result.type==='cancel'||result.type==='dismiss'){
+    D(await api('billing/wallet/reconcile',{}));
+    checkoutOpened.current=false;
+    if(active.current)M('Payment status refreshed.');
+   }else if(active.current)M('Use Check payment status after checkout.');
+  }catch(e:any){if(active.current)E(e.message||'Checkout could not open. Please try again.')}
+  finally{processing.current=false;if(active.current)B(false)}
+ }
+ async function check(){
+  if(processing.current)return;
+  processing.current=true;B(true);E('');
+  try{D(await api('billing/wallet/reconcile',{}));checkoutOpened.current=false;M('Payment status refreshed.')}
+  catch(e:any){E(e.message||'Unable to check payment.')}
+  finally{processing.current=false;B(false)}
+ }
+ async function pay(bookingId:string){if(processing.current)return;processing.current=true;B(true);E('');M('');try{const result=await api('billing/wallet/pay',{bookingId,key:Crypto.randomUUID()});M(result.message);await refresh()}catch(e:any){E(e.message||'Unable to pay from wallet.')}finally{processing.current=false;B(false)}}
+ async function driverAction(path:string,body:unknown){if(processing.current)return;processing.current=true;B(true);E('');M('');try{const result=await api('billing/'+path,body);M(result.message);await refresh()}catch(e:any){E(e.message||'Unable to update driver wallet.')}finally{processing.current=false;B(false)}}
+ return <><Pressable accessibilityRole="button" onPress={onBack} style={{minHeight:48,justifyContent:'center'}}><Text style={s.text}>← Your account</Text></Pressable><Text style={s.eyebrow}>YOUR DRIOZ WALLET</Text><Text style={s.h1}>{data?.driver?"Driver wallet.":"Your wallet."}</Text>{!!error&&<Text accessibilityRole="alert" style={s.error}>{error}</Text>}{!!error&&<Button secondary title="Open wallet on DRIOZ website" onPress={()=>Linking.openURL("https://www.drioz.com/wallet").catch(()=>E("Could not open the website. Visit drioz.com/wallet in your browser."))}/>}{!!message&&<Text accessibilityLiveRegion="polite" style={s.text}>{message}</Text>}{data?<><View style={{backgroundColor:colors.ink,borderRadius:18,padding:24,gap:14}}><Text style={{color:colors.lime,fontSize:11}}>{data.mode==='test'?'TEST WALLET · NO REAL MONEY':data.driver?'RIDE CREDIT · COMMISSION ONLY':'AVAILABLE BALANCE'}</Text><Text style={{color:colors.white,fontSize:40}}>{money(data.driver?Math.max(0,Number(data.driver.promo)+Number(data.driver.recharge)):data.balance)}</Text><Text style={{color:colors.white,lineHeight:22}}>{data.driver?"Welcome credit and recharges cover ride commission. Withdrawable earnings are shown separately below.":"For DRIOZ journeys. No transfers or cash withdrawals."}</Text></View><Disclosure title={data.driver?"Recharge driver wallet":"Add money"} initial={!data.driver}>{!data.enabled&&<Text style={s.muted}>Online payments are awaiting configuration.</Text>}{data.mode==='test'&&<Text style={s.muted}>Test mode: use Razorpay test payment details only.</Text>}<View style={{flexDirection:'row',gap:8}}>{['100','500','1000'].map(value=><Pressable key={value} accessibilityRole="button" accessibilityState={{selected:amount===value}} onPress={()=>A(value)} style={{padding:14,borderRadius:10,backgroundColor:amount===value?colors.ink:colors.line}}><Text style={{color:amount===value?colors.white:colors.ink}}>₹{value}</Text></Pressable>)}</View><Field label="Amount · INR" value={amount} onChange={A} keyboard="numeric"/><Button title={busy?'Please wait…':data.mode==='test'?'Add test money':'Add money securely'} dark disabled={busy||!data.enabled} onPress={()=>online()}/><Button title="Check payment status" secondary disabled={busy||!data.enabled} onPress={check}/></Disclosure>{data.driver?<DriverWalletPanel data={data.driver} busy={busy} action={driverAction}/>:<><Card><Text style={s.h2}>Journey payments</Text><Text style={s.muted}>Pay online before or after your journey. Wallet payments are available after completion.</Text>{!data.bookings.length&&<Text style={s.muted}>No completed journeys to pay yet.</Text>}{data.bookings.map((trip:any)=><View key={trip.id} style={{gap:12,paddingVertical:16,borderTopWidth:1,borderColor:colors.line}}><Text style={s.text}>{trip.pickup} → {trip.destination}</Text><Text style={s.muted}>{trip.due?'Amount due '+money(trip.due):data.mode==='test'?'Paid in test mode':'Paid'}</Text>{trip.due>0&&<><Button title="Pay online" disabled={busy||!data.enabled||trip.due<100} onPress={()=>online(trip.id)}/><Button title="Pay from wallet" secondary disabled={busy||data.balance<trip.due||trip.status!=='completed'} onPress={()=>pay(trip.id)}/></>}</View>)}</Card><Disclosure title="Wallet history">{!data.entries.length&&<Text style={s.muted}>Wallet transactions will appear here.</Text>}{data.entries.map((entry:any)=><View key={entry.id} style={{gap:8,paddingVertical:12,borderBottomWidth:1,borderColor:colors.line}}><View style={s.row}><Text style={s.text}>{entry.kind==='topup'?'Money added':'Journey payment'}</Text><Text style={s.text}>{entry.amount>0?'+':''}{money(entry.amount)}</Text></View><Text style={s.muted}>{new Date(entry.created_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} · IST</Text></View>)}</Disclosure></>}</>:!error?<Loading/>:<Button title="Reload wallet" secondary onPress={()=>refresh().catch(e=>E(e.message))}/>}</>;
+}

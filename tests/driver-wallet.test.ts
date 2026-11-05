@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {schemaSql} from './pg-schema.ts';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
@@ -8,21 +9,34 @@ import {driverWallet,reserveDriver} from '../lib/driver-wallet.ts';
 import {paymentService} from '../lib/payments.ts';
 import {operations} from '../lib/operations.ts';
 async function setup(mode='test'){
- const pg=new PGlite();await pg.exec('BEGIN;'+readFileSync(new URL('../db/postgres-staging.sql',import.meta.url),'utf8')+';CREATE ROLE anon;CREATE ROLE authenticated;'+readFileSync(new URL('../supabase/migrations/20261021025159_razorpay_wallet.sql',import.meta.url),'utf8')+';'+readFileSync(new URL('../supabase/migrations/20261021035305_driver_wallet.sql',import.meta.url),'utf8')+';COMMIT;SET search_path=drioz_staging;');
+ const pg=new PGlite();await pg.exec(schemaSql());
  const run=async(sql:string,args:any[])=>{const r=await pg.query(sql,args);return {rows:r.rows,rowCount:r.affectedRows??r.rows.length}};
  const db=databaseAdapter(run,work=>pg.transaction(async tx=>work(async(sql,args)=>{const r=await tx.query(sql,args);return {rows:r.rows,rowCount:r.affectedRows??r.rows.length}})));
  await pg.exec("INSERT INTO users(id,email,name,role,created_at) VALUES('driver','driver@example.com','Driver','driver',0),('customer','customer@example.com','Customer','customer',0);INSERT INTO cities(id,name,base,hourly) VALUES('hyd','Hyderabad',100000,0);INSERT INTO drivers(user_id,city_id,phone,licence,licence_expiry,verification,online,updated_at) VALUES('driver','hyd','9876543210','TS123456','2030-12-31','approved',1,0);");
  const actor={id:'driver',role:'driver'},config={RAZORPAY_KEY_ID:'rzp_'+mode+'_unit',RAZORPAY_KEY_SECRET:'unit-secret'};
  let count=0;const payments=new Map<string,any>();const provider={orders:{create:async(data:any)=>({...data,id:'order_'+(++count)}),fetchPayments:async(id:string)=>({items:[...payments.values()].filter(p=>p.order_id===id)})},payments:{fetch:async(id:string)=>payments.get(id)}};
  const service=paymentService(db,config,provider),driver=driverWallet(db,mode);
- async function trip(){const id=crypto.randomUUID();await db.prepare("INSERT INTO bookings(id,customer_id,city_id,pickup,destination,pickup_lat,pickup_lng,destination_lat,destination_lng,trip_type,transmission,fare,partner_fare,breakdown,idempotency_key,created_at,updated_at) VALUES(?,'customer','hyd','Pickup','Drop',17,78,18,79,'one-way','manual',100000,80000,'{}',?,0,0)").bind(id,id).run();return {id,fare:100000,partner_fare:80000}}
+ async function trip(){const id=crypto.randomUUID();await db.prepare("INSERT INTO bookings(id,customer_id,city_id,pickup,destination,pickup_lat,pickup_lng,destination_lat,destination_lng,trip_type,transmission,fare,partner_fare,breakdown,idempotency_key,created_at,updated_at) VALUES(?,'customer','hyd','Pickup','Drop',17,78,18,79,'one-way','manual',100000,80000,'{}',?,?,?)").bind(id,id,Date.now(),Date.now()).run();return {id,fare:100000,partner_fare:80000}}
  async function assign(b:any){await db.transaction(async database=>{await reserveDriver(database,b,'driver',mode);await database.prepare("UPDATE bookings SET status='assigned',driver_id='driver' WHERE id=?").bind(b.id).run()})}
  async function complete(b:any){await db.prepare("UPDATE bookings SET status='completed',updated_at=? WHERE id=?").bind(Date.now(),b.id).run()}
  async function capture(order:any){const id='pay_'+order.order_id.slice(6);payments.set(id,{id,order_id:order.order_id,amount:order.amount,currency:'INR',status:'captured',captured:true});return service.verify(order.owner||{id:'customer'},{razorpay_order_id:order.order_id,razorpay_payment_id:id,razorpay_signature:createHmac('sha256',config.RAZORPAY_KEY_SECRET).update(order.order_id+'|'+id).digest('hex')})}
  return {pg,db,actor,driver,service,trip,assign,complete,capture,mode};
 }
 const rejects=(promise:Promise<any>,status:number)=>assert.rejects(promise,(e:any)=>e.status===status);
-test('welcome credit is approved, once per licence, nonwithdrawable and isolated by mode',async()=>{const f=await setup();try{await rejects(f.driver.coupon({id:'customer'},{code:'DRIOZ500'}),403);await f.driver.coupon(f.actor,{code:'drioz500'});await rejects(f.driver.coupon(f.actor,{code:'DRIOZ500'}),409);let d=await f.driver.summary(f.actor);assert.equal(d.promo,50000);assert.equal(d.earnings,0);assert.equal(d.payoutEnabled,false);assert.equal((await driverWallet(f.db,'live').summary(f.actor)).promo,0);await rejects(f.driver.withdraw(f.actor,{amount:100,key:crypto.randomUUID()}),503)}finally{await f.pg.close()}});
+
+test('welcome summary distinguishes approval, eligibility, prior claim and reused licence',async()=>{
+ const f=await setup();try{
+  await f.db.prepare("UPDATE drivers SET verification='pending' WHERE user_id='driver'").run();
+  const pending=await f.driver.summary(f.actor);assert.equal(pending.couponReason,'verification_pending');assert.equal(pending.couponEligible,false);await rejects(f.driver.coupon(f.actor,{code:'DRIOZ500'}),403);
+  await f.db.prepare("UPDATE drivers SET verification='approved' WHERE user_id='driver'").run();assert.equal((await f.driver.summary(f.actor)).couponEligible,true);
+  await f.driver.coupon(f.actor,{code:'DRIOZ500'});const claimed=await f.driver.summary(f.actor);assert.equal(claimed.couponReason,'already_redeemed');assert.equal(claimed.couponEligible,false);assert.equal(claimed.promo,50000);
+  await f.db.prepare("INSERT INTO users(id,email,name,role,created_at) VALUES('duplicate','duplicate@example.invalid','Duplicate','driver',0)").run();
+  await f.db.prepare("INSERT INTO drivers(user_id,city_id,phone,licence,licence_expiry,verification,online,updated_at) VALUES('duplicate','hyd','1234567890','TS123456','2030-12-31','approved',0,0)").run();
+  const duplicate=await f.driver.summary({id:'duplicate'});assert.equal(duplicate.couponReason,'licence_already_used');assert.equal(duplicate.couponEligible,false);await rejects(f.driver.coupon({id:'duplicate'},{code:'DRIOZ500'}),409);
+  assert.equal((await f.db.prepare("SELECT count(*) AS n FROM driver_ledger WHERE event_key='coupon:DRIOZ500'").first()).n,1);
+ }finally{await f.pg.close()}
+});
+test('welcome credit is approved, once per licence, nonwithdrawable and isolated by mode',async()=>{const f=await setup();try{await rejects(f.driver.coupon({id:'customer'},{code:'DRIOZ500'}),403);await f.driver.coupon(f.actor,{code:'drioz500'});await rejects(f.driver.coupon(f.actor,{code:'DRIOZ500'}),409);const d=await f.driver.summary(f.actor);assert.equal(d.promo,50000);assert.equal(d.earnings,0);assert.equal(d.payoutEnabled,false);assert.equal((await driverWallet(f.db,'live').summary(f.actor)).promo,0);await rejects(f.driver.withdraw(f.actor,{amount:100,key:crypto.randomUUID()}),503)}finally{await f.pg.close()}});
 test('cash commission is charged only on completion; depleted funds block another acceptance',async()=>{const f=await setup();try{const b=await f.trip();await rejects(f.assign(b),409);await f.driver.coupon(f.actor,{code:'DRIOZ500'});await f.assign(b);assert.equal((await f.driver.summary(f.actor)).promo,50000);await f.complete(b);await f.complete(b);assert.equal((await f.driver.summary(f.actor)).promo,30000);assert.equal((await f.driver.summary(f.actor)).earnings,0);const second=await f.trip();await f.assign(second);await f.complete(second);assert.equal((await f.driver.summary(f.actor)).promo,10000);await rejects(f.assign(await f.trip()),409)}finally{await f.pg.close()}});
 test('online prepayment waits for completion, restores coupon commission and releases earnings after delay once',async()=>{const f=await setup();try{await f.driver.coupon(f.actor,{code:'DRIOZ500'});const b=await f.trip();await f.assign(b);const order=await f.service.create({id:'customer'},{purpose:'booking',bookingId:b.id});await f.capture(order);assert.equal((await f.driver.summary(f.actor)).pending,0);await f.complete(b);let d=await f.driver.summary(f.actor);assert.equal(d.promo,50000);assert.equal(d.pending,80000);assert.equal(d.earnings,0);await f.db.prepare('SELECT driver_release_earnings()').all();assert.equal((await f.driver.summary(f.actor)).earnings,0);await f.db.prepare("UPDATE driver_trip_money SET settles_at=0 WHERE booking_id=?").bind(b.id).run();await f.db.prepare('SELECT driver_release_earnings()').all();await f.db.prepare('SELECT driver_release_earnings()').all();d=await f.driver.summary(f.actor);assert.equal(d.earnings,80000);assert.equal(d.pending,0);assert.equal(d.promo,50000);assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM payments').first()).n,0)}finally{await f.pg.close()}});
 test('post-trip online payment restores deductions once, and driver recharges never become customer funds',async()=>{const f=await setup();try{const recharge=await f.service.create(f.actor,{purpose:'driver_topup',amount:100000});recharge.owner=f.actor;await f.capture(recharge);await f.capture(recharge);assert.equal((await f.driver.summary(f.actor)).recharge,100000);assert.equal((await f.service.wallet(f.actor)).balance,0);const b=await f.trip();await f.assign(b);await f.complete(b);assert.equal((await f.driver.summary(f.actor)).recharge,80000);const order=await f.service.create({id:'customer'},{purpose:'booking',bookingId:b.id});await f.capture(order);await f.capture(order);const d=await f.driver.summary(f.actor);assert.equal(d.recharge,100000);assert.equal(d.pending,80000);assert.equal(d.earnings,0)}finally{await f.pg.close()}});
@@ -32,3 +46,21 @@ test('production acceptance rolls back without balance and completion uses the f
 test('refunds hold pending earnings; an unknown bank outcome stays reserved for idempotent retry',async()=>{const f=await setup('live');try{await f.driver.coupon(f.actor,{code:'DRIOZ500'});const b=await f.trip();await f.assign(b);await f.complete(b);const order=await f.service.create({id:'customer'},{purpose:'booking',bookingId:b.id});await f.capture(order);await f.db.prepare("INSERT INTO payments(id,booking_id,amount,method,reference,status,created_at) VALUES(?,?,100000,'wallet','refund-test','refunded',0)").bind(crypto.randomUUID(),b.id).run();await f.db.prepare('UPDATE driver_trip_money SET settles_at=0 WHERE booking_id=?').bind(b.id).run();await f.db.prepare('SELECT driver_release_earnings()').all();assert.equal((await f.driver.summary(f.actor)).review,true);assert.equal((await f.driver.summary(f.actor)).earnings,0);
  await f.db.prepare("UPDATE driver_trip_money SET status='cash' WHERE booking_id=?").bind(b.id).run();await f.db.prepare("UPDATE driver_accounts SET earnings=80000 WHERE driver_id='driver' AND mode='live'").run();await f.db.prepare("INSERT INTO driver_banks(driver_id,holder,account_number,ifsc,status,fund_account_id,updated_at) VALUES('driver','Driver','12345678901','HDFC0000001','verified','fa_test',0)").run();let failed=true;const idempotency:string[]=[];const provider=async(_url:any,options:any)=>{idempotency.push(options.headers['X-Payout-Idempotency']);if(failed)throw Error('timeout');return Response.json({id:'pout_test',fund_account_id:'fa_test',amount:50000,currency:'INR',status:'processed'})};const driver=driverWallet(f.db,'live',{RAZORPAYX_KEY_ID:'rzp_live_unit',RAZORPAYX_KEY_SECRET:'unit',RAZORPAYX_ACCOUNT_NUMBER:'0000',RAZORPAYX_WEBHOOK_SECRET:'webhook-unit'},provider as any);const key=crypto.randomUUID();await assert.rejects(driver.withdraw(f.actor,{amount:50000,key}));assert.equal((await driver.summary(f.actor)).earnings,30000);failed=false;await driver.withdraw(f.actor,{amount:50000,key});assert.equal((await driver.summary(f.actor)).earnings,30000);assert.equal(idempotency[0],idempotency[1]);assert.equal((await driver.summary(f.actor)).withdrawals[0].status,'processed');await rejects(driver.webhook('{}','0'.repeat(64)),400);
  }finally{await f.pg.close()}});
+
+
+test('an expired ride cannot be paid and a captured in-flight order credits the wallet once',async()=>{
+ const f=await setup('live');
+ const customer={id:'customer'};
+ try{
+  const booking=await f.trip();
+  const order=await f.service.create(customer,{purpose:'booking',bookingId:booking.id});
+  await f.db.prepare("UPDATE bookings SET status='no_driver' WHERE id=?").bind(booking.id).run();
+  await rejects(f.service.create(customer,{purpose:'booking',bookingId:booking.id}),409);
+  await f.capture(order);
+  await f.capture(order);
+  const wallet=await f.service.wallet(customer);
+  assert.equal(wallet.balance,order.amount);
+  assert.equal(wallet.bookings.length,0);
+  assert.equal((await f.db.prepare('SELECT COUNT(*) AS n FROM payments').first()).n,0);
+ }finally{await f.pg.close()}
+});

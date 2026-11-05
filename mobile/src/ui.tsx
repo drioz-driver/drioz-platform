@@ -211,7 +211,7 @@ export const s = StyleSheet.create({
 
 export function Brand({ lightSurface=false, compact=false }: {lightSurface?:boolean;compact?:boolean}) {
   const scale=compact?110/145:1;
-  return <View style={lightSurface?{alignSelf:"flex-start",backgroundColor:colors.white,borderRadius:10,padding:8}:undefined}><View accessible accessibilityLabel="DRIOZ" style={{width:145*scale,height:49*scale,overflow:"hidden"}}><Image source={require("../assets/drioz-logo.png")} style={{width:209*scale,height:205*scale,position:"absolute",left:-32*scale,top:-83*scale}} resizeMode="contain" /></View></View>;
+  return <View style={lightSurface?{alignSelf:"flex-start",backgroundColor:colors.white,borderRadius:10,padding:8}:undefined}><Image accessibilityLabel="DRIOZ" source={require("../assets/logo-dark.png")} style={{width:145*scale,height:50*scale}} resizeMode="contain" /></View>;
 }
 export function Icon({name, active=false}: {name:string; active?:boolean}) {
   const line = {borderColor:colors.ink,borderWidth:1.6};

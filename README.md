@@ -1,8 +1,30 @@
-# DRIOZ platform
+# DRIOZ platform — v5
+
+Customer booking, driver partner and operations platform with two native apps (DRIOZ and DRIOZ Partner).
+
+**v5** = the live `github-ready` codebase (Vercel, Supabase Postgres/Auth/Storage, Razorpay, driver wallet, 10-second
+ride offers) plus the redesign, steering animations, separate partner portal/app and the v1.3 features.
+Start with **`docs/V5-UPGRADE.md`** — one additive SQL migration, then deploy. What changed: `CHANGELOG.md`.
+API reference: `docs/API.md`.
+
+| Where | What |
+|---|---|
+| `/` | Customer site (guest booking when signed out) |
+| `/partner` | Partner portal (sign in at `/partner/login`) |
+| `/#admin` | Operations (admin, operator, finance, support) |
+| `/wallet`, `/driver-finance` | Wallets, Razorpay checkout, bank transfers |
+| `mobile/drioz-customer` | DRIOZ app — `com.drioz.app` |
+| `mobile/drioz-partner` | DRIOZ Partner app — `com.drioz.partner` |
+
+Verify: `pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
+
+---
+
+## Earlier notes (github-ready)
 
 DRIOZ customer booking, driver partner and operations platform, including the shared Android and iOS application.
 
-The live drioz.com domain remains on ChatGPT Sites / Cloudflare. This migration branch runs the current website and API on Next.js for Vercel, with a private PostgreSQL staging schema, private Supabase Storage, and the existing Supabase Auth project. The older `production/` prototype and `legacy-demo/` are retained as references. See `docs/vercel-migration.md` for current verification and cutover requirements.
+The live drioz.com domain remains on ChatGPT Sites / Cloudflare. This migration branch runs the current website and API on Next.js for Vercel, with a private PostgreSQL staging schema, private Supabase Storage, and the existing Supabase Auth project. `legacy-demo/` is retained as a reference; the older `production/` prototype was left out of v5 (it is unchanged in `github-ready`). See `docs/vercel-migration.md` for current verification and cutover requirements.
 
 ## Implemented
 

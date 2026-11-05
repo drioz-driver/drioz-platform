@@ -118,6 +118,8 @@ test("native route excludes staff and mutation endpoints from the app surface", 
   ])
     assert.equal(mobilePathAllowed(path, "POST"), false);
   assert.equal(mobilePathAllowed("driver/location", "POST"), true);
+  assert.equal(mobilePathAllowed("bookings/123/payment-choice", "POST"), true);
+  assert.equal(mobilePathAllowed("bookings/123/cash-received", "POST"), true);
   assert.equal(mobilePathAllowed("bookings/123/invoice", "GET"), true);
 });
 test("native customer can estimate and book without browser cookies, with private trip isolation", async () => {
@@ -169,3 +171,17 @@ test("native customer can estimate and book without browser cookies, with privat
 });
 
 test("temporary auth outages preserve the native session instead of returning 401",async()=>{const {runtime}=setup();for(const status of [429,500,503])await assert.rejects(mobileIdentity(request("snapshot"),runtime,(async()=>Response.json({message:"unavailable"},{status})) as typeof fetch),(e:any)=>e.status===503);await assert.rejects(mobileIdentity(request("snapshot"),runtime,(async()=>Response.json({message:"expired"},{status:401})) as typeof fetch),(e:any)=>e.status===401)});
+
+test('document uploads preserve multipart files and ownership; oversize bodies fail safely',async()=>{
+ const {runtime,sql}=setup();const objects=new Map<string,Uint8Array>();
+ const bucket={maxUploadBytes:4*1024*1024,put:async(k:string,b:Uint8Array)=>{objects.set(k,b)},delete:async(k:string)=>{objects.delete(k)},get:async(k:string)=>objects.has(k)?{body:objects.get(k)}:null};
+ const env={...runtime,BUCKET:bucket};
+ const form=new FormData();form.append('kind','licence');form.append('file',new File(['%PDF-1.7\nDRIOZ synthetic upload test'],'licence.pdf',{type:'application/pdf'}));
+ const req=new Request('https://api.drioz.example/api/mobile/documents',{method:'POST',headers:{Authorization:'Bearer '+token},body:form});
+ const response=await handleMobile(req,'documents',env,fetcher);assert.equal(response.status,200);const saved=await response.json();assert.equal(objects.size,1);
+ const row=sql.prepare('SELECT owner_id,mime FROM documents WHERE id=?').get(saved.id) as any;assert.equal(row.owner_id,'supabase:'+user.id);assert.equal(row.mime,'application/pdf');
+ const denied=await handleMobile(new Request('https://api.drioz.example/api/mobile/documents/'+saved.id,{headers:{Authorization:'Bearer '+otherToken}}),'documents/'+saved.id,env,fetcher);assert.equal(denied.status,403);
+ const big=new FormData();big.append('kind','identity');big.append('file',new File([new Uint8Array(4*1024*1024+1)],'large.pdf',{type:'application/pdf'}));
+ const rejected=await handleMobile(new Request('https://api.drioz.example/api/mobile/documents',{method:'POST',headers:{Authorization:'Bearer '+token},body:big}),'documents',env,fetcher);assert.equal(rejected.status,400);assert.match((await rejected.json()).message,/4 MB/);assert.equal(objects.size,1);
+ const overflow=await handleMobile(new Request('https://api.drioz.example/api/mobile/documents',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'multipart/form-data; boundary=test','Content-Length':'4500000'},body:'test'}),'documents',env,fetcher);assert.equal(overflow.status,413);
+});

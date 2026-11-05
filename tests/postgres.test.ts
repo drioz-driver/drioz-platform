@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {schemaSql} from './pg-schema.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
@@ -9,7 +10,7 @@ import { operations } from '../lib/operations.ts';
 test('PostgreSQL adapter preserves booking contracts and atomic batch rollback', async () => {
   const pg = new PGlite();
   try {
-    await pg.exec('BEGIN;' + readFileSync(new URL('../db/postgres-staging.sql', import.meta.url), 'utf8') + ';COMMIT;SET search_path=drioz_staging;');
+    await pg.exec(schemaSql());
     const queries:string[]=[];
     const query = async (sql:string, args:any[]) => {
       queries.push(sql);

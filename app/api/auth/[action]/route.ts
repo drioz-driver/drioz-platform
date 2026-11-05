@@ -47,7 +47,7 @@ async function route(request:Request,context:{params:Promise<{action:string}>}){
    const d=z.object({password}).strict().parse(body);const {data,error}=await auth.client.auth.getUser();if(error||!managedUser(data.user))return json({message:'Open a valid recovery link before setting your password.'},401);await throttle(runtime.DB,request,action,data.user.id);if(!await consumeRecovery(runtime.DB,data.user.id,auth.cookie(recoveryCookie)))return json({message:'Open a new recovery link before changing your password.'},401);auth.setCookie(recoveryCookie,'',{maxAge:0});const result=await auth.client.auth.updateUser({password:d.password});if(result.error)return json({message:'Unable to update your password. Request a new recovery link.'},400);auth.choose('external');return json({ok:true});
   }
   return json({message:'Not found'},404);
- }catch(e){if(e instanceof z.ZodError)return json({message:e.issues.map(x=>x.message).join('. ')},400);return json({message:'Unable to complete sign-in right now. Please wait and try again.'},429)}
+ }catch(e){if(e instanceof z.ZodError)return json({message:e.issues.map(x=>x.message).join('. ')},400);const message=e instanceof Error?e.message:'';if(message.startsWith('Too many attempts'))return json({message},429);console.error('auth request failed',action,message);return json({message:'Unable to complete sign-in right now. Please wait and try again.'},503)}
 }
 function managedUser(user:any){return !!user?.id&&!!(user.email_confirmed_at||user.phone_confirmed_at)}
 export {route as GET,route as POST};

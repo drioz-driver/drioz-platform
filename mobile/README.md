@@ -1,74 +1,64 @@
-# DRIOZ for Android and iOS
+# DRIOZ mobile apps
 
-Native React Native application using Expo SDK 57, connected to the same Supabase Auth and DRIOZ Worker/D1/R2 API as the website. One application shows the customer experience or driver experience based on the server-owned account role. Admin remains on the website. This is native source, not a WebView wrapper.
+There are **two completely separate apps**. Each folder is its own Expo project with its own `package.json`, lockfile, source code, icons, store identity and EAS project. Nothing from the partner app is bundled into the customer app.
 
-## Implemented
+| | `drioz-customer/` | `drioz-partner/` |
+|---|---|---|
+| Store name | **DRIOZ** | **DRIOZ Partner** |
+| For | Customers booking a driver | Driver partners |
+| iOS bundle / Android package | `com.drioz.app` | `com.drioz.partner` |
+| URL scheme | `drioz://` | `driozpartner://` |
+| Location | When-in-use only (background location removed from manifest) | Background location + foreground service while online / on a trip |
+| Notifications | Trip updates (push) | Ride wake-ups, trip updates (push) |
+| Screens | Book, Journeys, Wallet, Inbox, Account (Support inside) | Drive (10-second offers, online switch, ride credit, onboarding & documents), Trips, Wallet, Inbox, Account |
+| Payments | Razorpay checkout + wallet (`react-native-razorpay`) | Wallet recharge, DRIOZ500, bank transfers |
 
-- Email/password sign-in and customer/driver registration; Google OAuth with PKCE and the system browser; encrypted, chunked SecureStore session persistence; optional Apple ID sign-in; password recovery through the existing website.
-- Native map selection of exact pickup/destination points, device geolocation and platform reverse geocoding. City coverage is detected automatically. No manual city/country selector or Request a quote button.
-- One Way without hours; Round Trip pickup/package hours; Outstation direction/hours and required schedule. Vehicle/transmission selection, automatic estimates, immutable server fare checks, idempotent booking, history and cancellation.
-- Partner profile, expiry and document upload; distinct licence/identity/assessment controls; approved-driver availability; accept/arrive/start with customer code/complete; earnings records.
-- Explicit consent for background driver GPS, native permission requests, Android foreground service notification, stop control, sign-out/offline cleanup and a last-reported GPS map. OS restrictions can still stop delivery. It is not a guaranteed 24/7 tracker.
-- Assigned-customer access to recent driver location; private support messages, in-app inbox and account controls. Inbox refreshes while open; remote push notifications are not implemented.
-- A new `/api/mobile/*` surface validates every bearer session against Supabase, ignores browser identity headers/cookies, limits requests and uses the existing authorization and trip rules. Native requests do not bypass the private hosting audience.
+The customer app contains no partner screens, links, wording or code: no "become a partner", no "open partner app", no ride-offer popup, no driver onboarding. If a driver account signs in to DRIOZ, it is told the account can't book rides and is asked to sign in with a customer account.
+
+Both apps call the same DRIOZ backend (`/api/mobile/*`, and `/api/wallet` etc. for payments) with Supabase bearer sessions. Both need a development or EAS build (Razorpay is a native module), not Expo Go. Because they are independent projects, the design system (`src/ui.tsx`, `src/theme.ts`, `src/Steering.tsx`) exists in both; change both when you change the brand.
+
+## Admin access
+
+Admins and operators can sign in to **both** apps to check each workflow (a `STAFF` badge shows in the header). In DRIOZ Partner, Account → **Open live dispatch** shows every waiting ride, who currently has the offer, the seconds left and the history. To test the driver flow end to end: apply in DRIOZ Partner, approve yourself on the website (Operations → Partners), then go online.
+
+## Ride offers (DRIOZ Partner)
+
+The server (`lib/ride-offers.ts`) offers each waiting ride to **one** partner at a time for **10 seconds**. Keep DRIOZ Partner open while online: the app polls every 2 seconds, which is also how the server knows you are available. The popup shows a rolling steering-wheel strip, a countdown ring around a turning wheel, vibration and haptics. Accept → the ride is yours (the platform fee is reserved from your ride credit). Pass or let it expire → it moves to the next partner; when nobody takes it, it comes back to you and the popup says **"Ride is back"**. When a ride is booked, online partners also get a push notification so they open the app.
 
 ## Run
 
-Use Node >=22.13. From this directory:
+Node ≥ 22.13. Each app is installed and run on its own:
 
 ```sh
+cd mobile/drioz-customer          # or mobile/drioz-partner
 npm ci
-cp .env.example .env
-# Fill in configuration, then:
-npx expo install --check
+cp .env.example .env              # EXPO_PUBLIC_API_URL, EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 npm run typecheck
-npx expo start --dev-client
+npm start                         # development build (dev client), not Expo Go
 ```
 
-Use a development build, not Expo Go, for background tracking and native configuration. Android Maps requires your own Maps SDK for Android key, restricted to `com.drioz.app` and the signing certificate SHA-1. The website's browser-restricted key cannot be reused. iOS uses Apple Maps by default.
+Add both redirect URLs in Supabase → Authentication → URL Configuration: `drioz://auth/callback` and `driozpartner://auth/callback`.
 
-Copy the Supabase project URL and publishable key into the two EXPO_PUBLIC variables. These are public app configuration; never put a service-role key, signing credential, trip PIN secret or database credential in the mobile app. `EXPO_PUBLIC_API_URL` must be the HTTPS origin serving the DRIOZ backend. Restart Metro after environment changes; rebuild binaries for native key/config changes.
+## Build and publish
 
-### API access blocker
+### Mumbai migration
 
-The current Sites audience is owner-private. Installed apps do not carry ChatGPT browser cookies, so the hosting layer may stop them before `/api/mobile/*`. An authenticated, network-accessible API deployment is needed for real-device operation. Do not embed the Sites bypass token or remove access protection as a workaround. Keep every API operation behind Supabase bearer validation and the domain authorization checks. Coordinate a separately reachable backend or a deliberate hosting access change before live tests. No audience or domain changes were made for this mobile implementation.
+The EAS development, preview and production profiles now explicitly use the Mumbai Supabase project. These are public client settings; no server API key is bundled. Both installed apps need a new native build because their Supabase URL is embedded in the JavaScript bundle. Keep the website on Sydney until the new builds are ready for the coordinated cutover. Distribute the Mumbai builds after the website backend is switched, and have users sign in again.
 
-### Supabase mobile sign-in
-
-Add exactly `drioz://auth/callback` to Supabase Authentication → URL Configuration → Redirect URLs. Retain the existing web redirects. Google provider must already be configured in Supabase; its OAuth client callback remains the Supabase callback URL, not the custom app scheme. Email confirmation must return to the same device/app to access the PKCE verifier.
-
-If enabling Apple login, configure the Apple provider/capability for your developer account and set `EXPO_PUBLIC_APPLE_SIGN_IN=true`. Validate the applicable App Store social sign-in requirements before release. The optional Apple feature is not enabled by default.
-
-## Create installable builds
-
-After configuring your Expo account and choosing final application identifiers:
+Run inside each app folder — each is its own EAS project and its own store listing:
 
 ```sh
-npx eas-cli@latest login
-npx eas-cli@latest init
-# Add the real returned project ID to EAS_PROJECT_ID; configure matching EAS build env values.
-npx eas-cli@latest build --platform android --profile development
-npx eas-cli@latest build --platform ios --profile development
-# Internal testing: Android APK / provisioned iOS app
-npx eas-cli@latest build --platform android --profile preview
-npx eas-cli@latest build --platform ios --profile preview
-# Store builds: Android AAB / signed iOS archive
-npx eas-cli@latest build --platform all --profile production
+npx eas-cli@latest init                                      # set EAS_PROJECT_ID in .env
+npx eas-cli@latest build --platform android --profile preview  # internal APK
+npx eas-cli@latest build --platform ios --profile preview      # internal iOS build
+npx eas-cli@latest build --platform all --profile production   # Play Store AAB + App Store IPA
 ```
 
-`eas.json` defines development, internal-preview and production profiles. No account, Expo project UUID, signing certificate, provisioning profile or store credentials are fabricated or included. iOS internal builds need an Apple Developer team and registered test devices; TestFlight is another distribution option after production build setup. EAS can compile iOS in the cloud without a local Mac. Local iOS builds need Xcode/macOS; Android local builds need Android Studio/SDK/JDK. Java alone is insufficient.
+- Android Maps needs a Maps SDK key restricted to the app's package name and signing SHA-1 (`GOOGLE_MAPS_ANDROID_KEY`). Create one key per app, or one key restricted to both. iOS uses Apple Maps.
+- DRIOZ Partner needs the Play Console background-location declaration and the App Store location justification.
+- Apple Sign-In entitlement is only added when `EXPO_PUBLIC_APPLE_SIGN_IN=true`.
+- Remote push (APNs/FCM) is not configured; DRIOZ Partner raises local notifications for offers while it is running in the background and sharing location.
 
-## Verification performed here
+## Verified here
 
-Dependencies installed with a lockfile; native TypeScript and backend TypeScript checked; API tests cover bearer-only authentication, rejection of unverified/expired sessions, exclusion of staff mutations, customer-owned booking and cross-account isolation, and bounded request sizes. Metro exports Android and iOS JavaScript bundles. A Metro bundle is not an installable APK/IPA and does not prove native GPS, maps or OAuth behavior on hardware.
-
-## Real-device checks before release
-
-- Verify both customer and driver sign-in, email confirmation, Google and enabled Apple flows on physical Android/iOS devices, including cancellation and cold-start deep links.
-- Test map key restrictions, current-position permission denied/allowed, pickup detection, One Way/Round Trip/Outstation prices and duplicate booking retries against the reachable API.
-- Verify driver approval gates, all three evidence types, online/offline, acceptance conflicts, customer start-code expiry/lockout, completion, history and account isolation.
-- Verify GPS with foreground, background, locked screen, Android battery optimization, revoked permissions, sign-out, offline and app termination. iOS/Android can stop a killed app; do not promise uninterrupted tracking. Stale server positions expire after two minutes.
-- Supply production icons/splash assets, public privacy policy/support URLs, retention and account deletion process, location disclosures/Data Safety labels, store screenshots, content rating and store review access. Account deletion is currently an Operations-assisted request, not automatic in-app erasure; store-readiness review is still required.
-- Live payments, remote push delivery and guaranteed emergency dispatch remain unimplemented, consistent with the website.
-
-References: https://docs.expo.dev/versions/v57.0.0/ · https://docs.expo.dev/versions/latest/sdk/location/ · https://supabase.com/docs/guides/auth/quickstarts/with-expo-react-native-social-auth
+Both apps type-check, and Metro exports Android and iOS JavaScript bundles for each (four bundles). The customer bundle was scanned and contains none of the partner-only screens or endpoints. Native config introspection confirms the separate bundle IDs, schemes and permissions. Simulators and physical devices are not available in this environment — test on real Android and iOS hardware before release.

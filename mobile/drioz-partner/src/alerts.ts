@@ -3,14 +3,15 @@ import { AppState, Platform, Vibration } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { money } from "./api";
-import { PUSH_FLAG } from "./push";
+import { offerAlertAction, presentedOfferIds } from "./offer-alert-policy";
 
 /**
  * Local alerts for ride offers. While a partner is online and sharing location,
  * the background location task also checks for a waiting offer and raises a
  * high-priority local notification so a backgrounded app still hears about it.
- * When remote push is registered (push.ts) the server already notifies the
- * device, so the local fallback stays silent to avoid double alerts.
+ * A registered push token does not silence this fallback (the server may not be
+ * sending offer pushes). Double alerts are avoided per offer instead: skip when
+ * this offer was already alerted or its notification is already on screen.
  */
 const LAST = "drioz.lastOfferAlert";
 Notifications.setNotificationHandler({
@@ -34,13 +35,16 @@ export async function prepareAlerts() {
   if (!current.granted && current.canAskAgain) await Notifications.requestPermissionsAsync();
 }
 export async function alertOffer(offer: { id: string; partnerFare: number; pickup: string; seconds: number }, foreground: boolean) {
-  if ((await SecureStore.getItemAsync(LAST)) === offer.id) return;
-  await SecureStore.setItemAsync(LAST, offer.id);
-  if (foreground) {
+  const lastAlertedOfferId = await SecureStore.getItemAsync(LAST);
+  if (lastAlertedOfferId === offer.id) return;
+  const presented = await Notifications.getPresentedNotificationsAsync().catch(() => []);
+  const action = offerAlertAction({ offerId: offer.id, foreground, lastAlertedOfferId, presentedOfferIds: presentedOfferIds(presented) });
+  if (offer.id) await SecureStore.setItemAsync(LAST, offer.id);
+  if (action === "skip") return;
+  if (action === "vibrate") {
     Vibration.vibrate([0, 350, 150, 350, 150, 350]);
     return;
   }
-  if ((await SecureStore.getItemAsync(PUSH_FLAG)) === "yes") return; // server push already delivered it
   await Notifications.scheduleNotificationAsync({
     content: {
       title: `New ride · ${localMoney(offer.partnerFare,offer)}`,
